@@ -1,0 +1,115 @@
+---
+title: "Visualizing linear regression models"
+author: "Mark Bounthavong"
+date: "10/28/2021"
+output: html_document
+---
+
+
+## Introduction
+
+Linear regression models allow us to determine if changing the values on a variable is associated with the values of another variable. In other words, if I make a 1-unit change in $X$, how much does Y change? In fact, linear regression is similar to the algebraic equation for a simple line ($Y = mx + b$, where $m$ is the slope, $X$ is the parameter that is changing, and $b$ is the Y-intercept). In biostatistics, we use linear regression models to test the association between two or more variables here the outcome is a continuous data type. 
+
+There are several conditions that need to be satisfied in order for us to use the results from a linear regression model. These include:
+
+* Outcome variable is normally distributed (parametric)
+* Observations are independent
+* Residuals are not correlated with the $X$ variables (homoscedasticity)
+* Association between $X$ and $Y$ is linear
+
+However, the linear regression model is pretty robust to violations of these assumptions. Hence, it’s popularity. Moreover, it is very easy to interpret as this article will demonstrate. 
+
+
+## Simple linear regression
+Typical notations of the linear regression include:
+
+* $Y_i$ denotes the outcome (or dependent) variable for subject $i$
+* $X_1i$ denotes the predictor of interest or the independent variable ($X_1$) for subject $i$
+* $\beta_0$ denotes the Y-intercept when $X$ is zero
+* $\beta_1$ denotes the slope or the change in $Y$ with a 1-unit change in $X$
+* $\epsilon$ denotes the errors
+
+The structural form of a linear regression model:
+
+<div align="center">$Y_i = \beta_0 + \beta_1 X_{1i} + \epsilon$</div> \
+
+Using some example data (`mtcars`), let’s evaluate the association between the car’s weight (`wt`) and fuel efficiency (`mpg`). We set up the linear regression model so that the outcome is `mpg` and `wt` is the main predictor of interest. The structural of this model is:
+
+<div align="center">$mpg_i = \beta_0 + \beta_1 wt_{1i} + \epsilon$</div> \
+
+We can use the R command lm() to perform this regression:
+
+```{r, message = FALSE, warning = FALSE} 
+#### CLear the environment
+rm(list = ls())
+
+#### Load the libraries
+library("ggplot2")
+library("predict3d")
+
+#### Load Data
+data1 <- mtcars
+head(data1)
+
+### Linear regression model (Y = mpg, X = wt)
+linear.model1 <- lm(mpg ~ wt, data = data1)
+summary(linear.model1)
+```
+
+We can generate the 95% confidence intervals (CI) for the parameters using `confint()` command.
+```{r}
+confint(linear.model1)
+```
+
+Based on these outputs, a 1-unit increase in `wt` was associated with a 5.34-unit decrease in `mpg` (95% CI: -6.49, -4.20), which was statistically significant at the 5% alpha level. 
+
+We can visualize the association between `wt` and `mpg`:
+
+```{r}
+#### Visualize the linear regression models
+ggPredict(linear.model1, digits = 1, show.point = TRUE, se = TRUE, xpos = 0.5)
+ggPredict(linear.model1, digits = 1, show.point = FALSE, se = TRUE, xpos = 0.5)
+ggPredict(linear.model1, digits = 1, show.point = TRUE, show.error = TRUE, se = TRUE, xpos = 0.5)
+```
+
+### Multiple variable lineaer regression model
+For a linear regression model with multiple $X$s, we just add another $\beta$ coefficient and $X$: \
+
+<div align="center">$Y_i = \beta_0 + \beta_1 X_{1i} +  \beta_2 X_{2i} + \epsilon$</div> \
+
+<div align="center">$\beta_2$ denotes the change in Y due to a 1-unit change $X$</div>
+<div align="center">$X_{2i}$ denotes the second X variable for individual $i$</div> \
+
+Multivariable linear regression models allow us to focus on one variable’s impact on the outcome while “controlling” for the effects of the other variables. Sometimes, we use the term “adjusting” for the other covariates instead of “controlling,” but these terms are not helpful in understanding what the linear regression is doing with these other variables. When we say “control” we’re trying to mitigate the effects of other variables form the variable of interest. In other words, we want to see what the effects are for a similar group of people with the same characteristics. 
+
+Using the `mtcars` data, let’s test the association between the weight of the car (`wt`) and fuel efficiency (`mpg`) controlling for engine cylinder size (`cyl`). \
+
+<div align="center">$mpg_i = \beta_0 + \beta_1 wt_{i} +  \beta_2 cyl_{i} + \epsilon$</div> \
+
+We can use the R command `lm()` to perform this regression, but add `cyl` to the equation:
+
+```{r}
+### Linear regression model (Y = mpg, X = wt + cyl)
+linear.model2 <- lm(mpg ~ wt + cyl, data = data1)
+summary(linear.model2)
+confint(linear.model2)
+```
+
+Based on the linear regression output, the weight of the car was associated with a 3.19-unit decrease in the `mpg` controlling for the cylinder size (95% CI: -4.74, -1.64). 
+
+We can visualize the association between wt and mpg for different `cyl` groups:
+
+```{r}
+#### Visualize the linear regression models
+ggPredict(linear.model2, digits = 1, show.point = TRUE, se = TRUE, xpos = 0.5)
+ggPredict(linear.model2, digits = 1, show.point = TRUE, se = TRUE, xpos = 0.5, facet.modx = TRUE, show.error = TRUE)
+ggPredict(linear.model2, digits = 1, show.point = FALSE, se = TRUE, xpos = 0.5)
+ggPredict(linear.model2, digits = 1, pred = cyl, show.point = TRUE, se = TRUE, xpos = 0.5)
+```
+
+### Conclusions
+Linear regression models are very useful to test the association between multiple variables. In these examples, we go through the syntax using the `lm()` command to run the linear regression model. the `confint()` command to generate the 95% confidence intervals, and visualize the results using `ggPredict3d`, a great package for visualizing these coefficients. Now that we have generated some of the visuals for the linear regression, we will need to look at the residuals and assess whether the assumptions hold (we'll visit these issues in a future article). \
+
+
+
+
