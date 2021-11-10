@@ -1,5 +1,5 @@
 ---
-title: "Visualizing linear regression models"
+title: "Visualizing linear regression models - Part 1"
 author: "Mark Bounthavong"
 date: "10/28/2021"
 output: html_document
@@ -37,7 +37,7 @@ Using some example data (`mtcars`), let’s evaluate the association between the
 
 <div align="center">$mpg_i = \beta_0 + \beta_1 wt_{1i} + \epsilon$</div> \
 
-We can use the R command lm() to perform this regression:
+We can use the R command `lm()` to perform this regression:
 
 ```{r, message = FALSE, warning = FALSE} 
 #### CLear the environment
