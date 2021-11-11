@@ -12,7 +12,7 @@ output:
 
 
 ## Introduction
-In a previous [article](https://rpubs.com/mbounthavong/visualizing_linear_regression_models), we discussed how to construct and visualize linear models using R with the `lm()` command and the `predict3d` package. In this article, we will build upon our knowledge of the linear model by checking for model fit to the actual data and assessing whether the residuals violate the assumptions. Some of the critical assumptions that we will evaluate is whether the residuals are scattered randomly against the predicted values (homosckedasticity) and if the residuals are normally distributed. 
+In a previous [article](https://rpubs.com/mbounthavong/visualizing_linear_regression_models), we discussed how to construct and visualize linear models using R with the `lm()` command and the `predict3d` package. In this article, we will build upon our knowledge of the linear model by checking for model fit to the actual data and assessing whether the model's residuals violate the assumptions. Some of the critical assumptions that we will evaluate is whether the residuals are scattered randomly against the predicted values (homosckedasticity) and if the residuals are normally distributed. 
 
 We used the following linear structural form:
 
@@ -58,6 +58,8 @@ Using the example data (`mtcars`), we can evaluate the association between the c
 
 <div align="center">$mpg_i = \beta_0 + \beta_1 wt_{1i} + \epsilon$</div> \
 
+Based on the output from the linear regression, a one-unit increase in the car's weight is associated with a 5.3 decrease in miles per gallon (mpg) with a 95% CI of -6.49 and -4.20. 
+
 ```{r}
 ### Linear model
 linear.model1 <- lm(mpg ~ wt, data = data1)
@@ -74,23 +76,23 @@ ggPredict(linear.model1, digits = 1, show.point = TRUE, se = TRUE, xpos = 0.5)
 
 ## {-}
 
-### Residuals are normally distribution assumption
+### Residuals are normally distributed assumption
 In linear models, we expect to have some degree of errors or poor model fit to the actual data. We can use the model output and look at the coefficient of determination $R^2$, which tells us the proportion of the variance that is explained by the predicted model. $R^2$ can range between 0 and 1, where 1 represents perfect model fit. In our linear model, the $R^2$ is approximately 0.74 or 74% of the variance is explained by the linear mode. 
 
-We can look at the residuals and see if they are normally distributed. 
+We can also look at the residuals and see if they are associated with the predicted value and normally distributed. We want the residuals to not be associated with the predicted value; hence, the residuals should be scattered uniformly across all ranges of the predicted value (residual plot). Additionally, we expect the residuals to be normally distributed (e.g., histogram and QQ plots)
 
 ### Visualize and test whether the residual are normally distributed {.tabset}
 We can visual and test to determine whether the residuals from the model are normally distributed. In the visual inspection, we can look at the scatter of the residuals across the predicted values, the histogram of the residuals, and the QQ plot. 
 
-We can also perform statistical inferential tests to see if the residuals are normally distributed (e.g., Shapiro-Wilk's test). A paper by Yap and Sim (2011) compared different normality tests including the Shapiro-Wilk and Jarque-Bera tests. According to Yap and Sim, the Shapiro-Wilk test is good power properties across their range of asymmetric and symmetric simulations. In this article, we'll perform the Shapiro-Wilk, Jarque-Bera, and Kolmogorov-Smirnov tests and compare how similar or different they are. 
-
+We can also perform statistical inferential tests to see if the residuals are normally distributed (e.g., Shapiro-Wilk's test). A paper by Yap and Sim (2011) compared different normality tests including the Shapiro-Wilk, Jarque-Bera, and Kolmogorov-Smirnov tests or normality. According to Yap and Sim, the Shapiro-Wilk test has good power properties across their range of asymmetric and symmetric simulations and is the recommend test for normality. In this article, we'll perform the Shapiro-Wilk, Jarque-Bera, and Kolmogorov-Smirnov tests and compare how similar or different they are. 
 
 #### Visualize the residuals
-In the first plot, the residuals appear to be randomly scattered across the fitted values, which is what we would expect is the residuals are normally distributed. 
+In the first plot, the residuals appear to be randomly scattered across the fitted values, which is what we would expect is the residuals are not associated with the predicted values of the linear model (homosckedasticity). 
 
-The histogram is more difficult to determine if the residuals are normally distributed. There doesn't appear to be a normal distribution, but this may be due to the small sample. 
+To assess for normality we can look at the histogram. The histogram is more difficult to determine if the residuals are normally distributed. There doesn't appear to be a normal distribution (this looks like it's right-skewed), but this may be due to the small sample. 
 
-Finally, the QQ plot provided us with another visual to determine if the residuals are normally distributed. If the residuals were normally distributed, we would expect the residuals to follow the red dotted line. But notice that the residuals do not fit along the red dotted line at the extreme ends of the quantiles, which suggest that the residuals may not be normally distributed. 
+Finally, the QQ plot provides us with another visual to determine if the residuals are normally distributed. If the residuals were normally distributed, we would expect the residuals to follow the red dotted line. However, in this case, notice that the residuals do not fit along the red dotted line at the extreme ends of the quantiles, which suggest that the residuals may not be normally distributed. 
+
 ```{r}
 ### Test if the data is normally distributed
 #### Set up the matrix
@@ -107,29 +109,31 @@ qqnorm(linear.model1$res); qqline(linear.model1$res, col = "2", lwd = 1, lty = 1
 ```
 
 #### Shapiro-Wilk's test 
-After reviewing the visual plots, we can estimate whether the residuals deviate from the normal distribution assumption by performing a Shapiro-Wilk's test. Based on the output, we fail to reject the null that the residuals' distribution is no different from a normal distribution. But again, we have a small sample so the potential for type II error where we incorrect fail to reject the null when in fact there is a differece could occur. 
+After reviewing the visual plots, it is inconclusive if the residuals are normally distributed. We can estimate whether the residuals deviate from the normal distribution assumption by performing a Shapiro-Wilk's test. Based on the output, we fail to reject the null that the residuals' distribution is no different from a normal distribution (P = 0.1044). But again, we have a small sample so the potential for type II error where we incorrectly fail to reject the null when in fact there is a difference could occur. 
 
-I'm familiar with using the Shapiro-Wilk's test when testing whether a continuous data is normally distributed. However, there are other tests that can be used. 
 ```{r}
 shapiro.test(linear.model1$res)
 ```
 
 #### Jarque–Bera test
-The Jarque-Bera test is an alternative to the Shapiro-Wilk's test to evaluate whether a continuous data is normally distributed. Although, this is more useful for data that are symmetric with high kurtosis (or sharp and narrow distribution and long tails). I learned about the Jarque-Bera test when I read Will Johnson's blog on [Linear Regression Example in R using lm() Function](https://www.learnbymarketing.com/tutorials/linear-regression-in-r/). I highly encourage you to read his article, which provides a great tutorial for building and evaluating linear regression models. \
+The Jarque-Bera test is an alternative to the Shapiro-Wilk's test to evaluate whether a continuous data is normally distributed. Although, this is more useful for data that are symmetric with high kurtosis (or sharp and narrow distribution with long tails), we will see how similar (or different) the results are compared to the Shapiro-Wilk test. 
 
-There are two ways to perform the Jarque-Bera tests. To perform the Jarque-Bera test, make sure to install and load the library `DescTools` and `tseries`. With the `DescTools` package you can use the `JarqueBeraTest` command, which allows you to select `robust` option; the `robust` option uses the robust standard deviation. The second method uses the `jarque.bera.test` command from the `tseries` package. This does not allow you to select the robust standard deviation. 
+I learned about the Jarque-Bera test when I read Will Johnson's blog on [Linear Regression Example in R using lm() Function](https://www.learnbymarketing.com/tutorials/linear-regression-in-r/). I highly encourage you to read his article, which provides a great tutorial for building and evaluating linear regression models. \
+
+There are two ways R commands that can be used to perform the Jarque-Bera tests. To perform the Jarque-Bera test, make sure to install and load the library `DescTools` and `tseries`. With the `DescTools` package, you can use the `JarqueBeraTest` command, which allows you to select `robust` option; the `robust` option uses the robust standard deviation. The second method uses the `jarque.bera.test` command from the `tseries` package. This does not allow you to select the robust standard deviation. 
 ```{r}
 #### Method 1:
 JarqueBeraTest(linear.model1$res, robust = TRUE)  ### Use robust method
 
-JarqueBeraTest(linear.model1$res, robust = FALSE) ### do not use robust method
+JarqueBeraTest(linear.model1$res, robust = FALSE) ### Does not use robust method
 
 #### Method 2:
 jarque.bera.test(linear.model1$res)
 ```
 
 #### Kolmogorov-Smirnov test
-The Kolmogorov-Smirnov test is also called the Lilliefors test. We have to install and load the `nortest` package and use the `lillie.test()` test. 
+The Kolmogorov-Smirnov test is also called the Lilliefors test. This is another test for normality that we will compare to the Shapiro-Wilk and Jarque-Bera tests. We have to install and load the `nortest` package and use the `lillie.test()` test. 
+
 ```{r}
 lillie.test(linear.model1$res)
 ```
@@ -137,12 +141,14 @@ lillie.test(linear.model1$res)
 
 
 ## Conclusions
-Based on the visual inspections of the residuals and the normality tests, we can make an argument that the residuals do not violate the assumptions of the linear regression model. The Shapiro-Wilk test resulted in a p-value of 0.1044, the Jarque-Bera test p-value was 0.3013, and the Kolmogorov-Smirnov test p-value was 0.8379. These results varied, but they all failed to reject the null hypothesis that the model's residuals are not different from a normal distribution. Even though the visual plots made us wary about whether the residuals were associated with the predicted value and did not follow a normal distribution. But the statistical tests provided us with some support that this was not a concern with our current linear regression model. Linear regression models are quite robust to violations of its assumptions, but it's always good practice to check and verify the residuals distribution. 
+Based on the visual inspections of the residuals and the normality tests, we can make an argument that the residuals do not violate the assumptions of the linear regression model. The residuals do not appear to be associated with the predicted values in the residual plot. So we can conclude that the residuals maintain the homosckedasticity assumption. In terms of normality, the Shapiro-Wilk test resulted in a p-value of 0.1044, the Jarque-Bera test p-value was 0.3013, and the Kolmogorov-Smirnov test p-value was 0.8379. These results varied, but they all failed to reject the null hypothesis that the model's residuals are not different from a normal distribution. Even though the visual plots made us wary about whether the residuals followed a normal distribution, the statistical tests provided us with some inferential conclusion that this was not a concern with our current linear regression model. Linear regression models are quite robust to violations of its assumptions, but it's always good practice to check and verify the residual distribution. 
+
+The R Markdown code can be acquire on my GitHub page [here](https://github.com/mbounthavong/R-tutorials/blob/main/Visualizing%20linear%20regression%20models-part%202)
 
 ## Acknowlegements
-This tutorial is based on the accumlated knowledge from my experience and code snippets that I've collected. But I want to highlight a couple of online blogs that were very helpful in creating this article. I would like to thank Will Johnson and his [article on linear regression models](https://www.learnbymarketing.com/tutorials/linear-regression-in-r/); I learned about the Jarque-Bera test from reading his blog. This lead me to learn about the different types of normality tests such as the Kolmogorov-Smirnov test, D’Agostino test, and Anderson–Darling test. I also read a blog by Jinhang Jing [Linear Regression in R](https://towardsdatascience.com/linear-regression-analysis-in-r-fdd59295d4a8), which provides another great tutorial for performing and visually inspecting linear models. 
+This tutorial is based on the accumulated knowledge from my experience and code snippets that I've collected. But I want to highlight a couple of online blogs that were very helpful in creating this article. I would like to thank Will Johnson and his [article on linear regression models](https://www.learnbymarketing.com/tutorials/linear-regression-in-r/); I learned about the Jarque-Bera test from reading his blog. This lead me to learn about the different types of normality tests such as the Kolmogorov-Smirnov test, D’Agostino test, and Anderson–Darling test. I also read a blog by Jinhang Jing [Linear Regression in R](https://towardsdatascience.com/linear-regression-analysis-in-r-fdd59295d4a8), which provides another great tutorial for performing and visually inspecting linear models. 
 
-## Referneces
+## References
 B. W. Yap & C. H. Sim (2011) Comparisons of various types of normality tests, Journal of Statistical Computation and Simulation, 81:12, 2141-2155, DOI: 10.1080/00949655.2010.520163
 
 
