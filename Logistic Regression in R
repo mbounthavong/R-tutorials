@@ -223,6 +223,8 @@ knitr::include_graphics("Figure3.jpg")
 ## Conclusions
 Logistic regression models allow us to estimate the association between a binary variable with a predictor variables that can be continuous or categorical. Additionally, the logistic regression model allows us to include more than one predictor variable thereby controlling for their effects. This is useful when potential confounders are present and the researcher wants to adjust for them.
 
+## Acknowledgements
+I found the [LaplacesDemon package](https://rdrr.io/cran/LaplacesDemon/man/LaplacesDemon.html) useful for plotting the logistic regression function. I also found the website of Alboukadel Kassambara very helpful in learning more about logistic regressions. He has a lot of helpful resources to perform other types of models using R. His website can be found [here](http://www.sthda.com/english/articles/36-classification-methods-essentials/151-logistic-regression-essentials-in-r/). Additionally, I found the site by Selva Prabhakaran to be helpful in understanding the equations used for logistic regression models; here is the  [link](http://r-statistics.co/Logistic-Regression-With-R.html).
+
 ## Contact
 These tutorials are a work in progress, so they may contain errors. I highly recommend you seek out statistical consult if you plan on running any analysis meant for publication. Any comments and suggestions can be sent to: internal.validity.blog@gmail.com
-
