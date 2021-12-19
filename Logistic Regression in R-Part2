@@ -1,0 +1,271 @@
+---
+title: "Logistic regression in R - Part 2 (Goodness of fit)"
+author: "Mark Bounthavong"
+date: "12/17/2021"
+output: html_document
+---
+
+## Introduction
+In a previous article, we discuss how to construct a logistic regression in R ([see previous article](https://rpubs.com/mbounthavong/logistic_regression)). However, we did not discuss how to assess whether the logistic regression fit our data well. In this article, we'll go over some goodness of fit tests to help determine whether the logistic regression model does a good job of fitting the data. 
+
+
+## Motivating example {.tabset}
+We will use the example `diabetes.csv` from the [previous article](https://rpubs.com/mbounthavong/logistic_regression). \
+
+You can download the data [here](https://www.dropbox.com/s/c3tjrwhtre23701/diabetes.csv?dl=0). 
+
+### Descriptives
+There are 768 observations in the `diabetes.data` data frame. 
+
+```{r, message = FALSE, warning = FALSE}
+library("psych")
+library("gmodels")
+
+## Import file
+diabetes.data <- read.csv("diabetes.csv", header = TRUE)
+head(diabetes.data)
+
+### Descriptive of diabetes.data
+describeBy(diabetes.data)
+```
+
+### Create categorical variables
+Currently, the data frame has a variable called `Pregnancies` that contains the number of pregnancies each subject has. We are only interested in whether or not they have had a pregnancy, so we'll create a binary variable called `group`. We added labels to the 0s an 1s and call this new data frame `data1`. There was a total of 657 (85.5%) subjects with a history of pregnancies and 111 (14.5%) subjects with no history of pregnancy. 
+
+```{r, message = FALSE, warning = FALSE}
+#### Generate groups based on pregnancies (Group 1 = 0, Group 2 = 1-5, Group 3 = >5 pregnancies)
+diabetes.data$group[diabetes.data$Pregnancies == 0] = 0 
+diabetes.data$group[diabetes.data$Pregnancies > 0] = 1 
+CrossTable(diabetes.data$group)
+
+### Create factors
+data1 <- within(diabetes.data, {
+           group <- factor(group, labels = c("No history of pregnancies", "History of pregnancies"))
+})
+
+CrossTable(data1$group)
+
+### Compare datasets
+head(diabetes.data)
+head(data1)
+```
+
+### Crude Logistic Regression Model
+We create a crude logistic regression model to evaluate the association of the subject's age `Age` on history of pregnancy `group`. \
+
+Crude model:
+<div align="center">$logit( E[PregancyHistory_i | X_i]) = logit(p_i) = ln(\frac{p_i}{1 - p_i}) = \beta_0 + \beta_1 (Age)_{i} + \epsilon$</div>\
+
+Based on the crude logistic regression model, a 1-unit increase in age was associated with a 7% increase in the odds of having a history of pregnancy (95% CI: 1.05, 1.10), which is statistically significant. 
+
+```{r, message = FALSE, warning = FALSE}
+logit1 <- glm(group ~ Age, data = data1, family = "binomial"(link = "logit"))
+summary(logit1)
+confint(logit1)
+
+### Exponentiate the coefficients
+exp(coef(logit1))
+exp(confint(logit1))
+```
+
+### Multivariable logistic regression model
+We can add potential confounders such as BMI, glucose, and skin thickness to the logistic regression model. This will generate model estimates that will be adjusting for these other predictors. \
+
+Adjusted model:
+<div align="center">$logit( E[PregancyHistory_i | X_i]) = logit(p_i) = ln(\frac{p_i}{1 - p_i}) = \beta_0 + \beta_1 (Age)_{i} + \beta_2 (BMI)_{i} + \beta_2 (Glucose)_{i} + \beta_2 (SkinThickness)_{i} + \epsilon$</div>\
+
+```{r, message = FALSE, warning = FALSE}
+logit2 <- glm(group ~ Age + BMI + Glucose + SkinThickness, data = data1, family = "binomial"(link = "logit"))
+summary(logit2)
+confint(logit2)
+
+### Exponentiate the coefficients
+exp(coef(logit2))
+exp(confint(logit2))
+```
+## {-}
+
+
+## Assessing model fit for a logistic regression {.tabset}
+In our motivating example, we have two models: (1) Crude model and (2) Adjusted model. The crude model only has the outcome (Pregnancy = Yes/No) and the predictor of interest (Age). The adjusted model has the outcome and predictor of interest along with other covariates (BMI, Glucose, and SkinThickness). We can assess which of these two models fit the data better using different types of tests. One of these tests is the Hosmer-Lemeshow (HL) goodness of fit (GOF) test.\
+
+There are several R packages that you can use to perform the HL GOF test:\
+* `hoslem.test` function from the `ResourceSelection` package \
+* `performance_hosmer` function from the `performance` package \
+* `hltest` function from the `largesamplehl` package \
+
+Note: I noticed that when I used  `data1` in the `hoslem.test` function, I get p-values that are very small (e.g., $10^{-14}$). This does not occur when I use `diabetetes.data` in the function. I believe this has something to do when I factor the outcome variable `pregnancy`. Therefore, when using the `hoslem.test` function, make sure to use the unfactorized outcome variable.
+
+### Comparing both models using the Likelihood ratio test
+You can compare models if one is nested within the other. For our example, the crude mode is nested within the adjusted model.\
+
+Crude model:
+<div align="center">$logit( E[PregancyHistory_i | X_i]) = logit(p_i) = ln(\frac{p_i}{1 - p_i}) = \beta_0 + \beta_1 (Age)_{i} + \epsilon$</div>\
+
+Adjusted model:
+<div align="center">$logit( E[PregancyHistory_i | X_i]) = logit(p_i) = ln(\frac{p_i}{1 - p_i}) = \beta_0 + \beta_1 (Age)_{i} + \beta_2 (BMI)_{i} + \beta_3 (Glucose)_{i} + \beta_4 (SkinThickness)_{i} + \epsilon$</div>\
+
+where $p_{i}$ is the probability of having a history of pregnancy. \
+
+We can compare both models using the likelihood ratio test to see which one fits the data better. We will use the `lrtest` function from the `lmtest` package. The null hypothesis states that the crude model fits the data better. The alternative hypothesis states that the alternative (adjusted model) fits the data better. 
+
+```{r, warning = FALSE, message = FALSE}
+library(lmtest)
+
+### Comparing the crude model (logit1) to the adjusted model (logit2)
+lrtest(logit1, logit2)
+```
+
+The p<0.00001 suggesting that the adjusted model with four covariates (Age, BMI, Glucose, and SkinThickness) fits the data significantly better than the crude model.
+
+### HL GOF Test -- Crude model
+The Hosmer-Lemeshow GOF test evaluates whether the logistic regression model is a good fit for the data. The null hypothesis for the Hosmer-Lemeshow GOF test is that the model is a good fit of the data; the alternative hypothesis is that the model is not a good fit. 
+
+```{r, warning = FALSE, message = FALSE}
+library("ResourceSelection")
+library("largesamplehl")
+library("PredictABEL")
+library("performance")
+
+### Method 1:
+hl_gof <- hoslem.test(diabetes.data$group, fitted(logit1), g = 10) ### Use the unfactored data for the outcomes
+hl_gof
+
+### Method 2:
+performance_hosmer(logit1, n_bins = 10)
+
+### Method 3: 
+hltest(logit1, G = 10)
+
+### Plot the predicted against the observed:
+plotCalibration(data = data1, cOutcome = 9, predRisk = fitted(logit1), groups= 10)
+```
+
+### HL GOF Test -- Adjusted model
+The Hosmer-Lemeshow GOF test evaluates whether the logistic regression model is a good fit for the data. The null hypothesis for the Hosmer-Lemeshow GOF test is that the model is a good fit of the data; the alternative hypothesis is that the model is not a good fit.
+
+```{r, warning = FALSE, message = FALSE}
+# Method 1:
+hl_gof <- hoslem.test(diabetes.data$group, fitted(logit2), g = 10) ### Use the unfactored data for the outcomes
+hl_gof
+
+# Method 2:
+performance_hosmer(logit2, n_bins = 10)
+
+### Method 3: 
+hltest(logit2, G = 10)
+
+### Plot the predicted against the observed:
+plotCalibration(data = data1, cOutcome = 9, predRisk = fitted(logit2), groups= 10)
+```
+
+### Modified HL GOF test for large samples
+For large samples, there is a modified version of the Hosmer-Lemeshow test. To perform this test, we will need to install the `largesamplehl` package, which can be found [here](https://rdrr.io/github/gnattino/largesamplehl/f/README.md). (Note: I had trouble installing this using the `install.packages()` command. Instead, I used the `devtools` command: `install_github("gnattino/largesamplehl")` to install the `largesamplehl` package.)
+
+```{r, warning = FALSE, message = FALSE}
+### Crude model
+hltest(logit1)
+
+### Adjusted model
+hltest(logit2)
+```
+
+### Omnibus Goodness of Fit test
+Currently, many users consider the Hosmer-Lemeshow GOF test to be obsolete. As a replacement, Hosmer and Lemeshow have developed the omnibus goodness of fit test. To perform this test, we need the `rms` package and use the `residual_lrm` function.\
+
+The results from the crude model:
+```{r, warning = FALSE, message = FALSE}
+library("rms")
+
+logit1.res <- lrm(group ~ Age, data = data1, y = TRUE, x = TRUE)
+residuals(logit1.res, type = "gof")
+```
+Based on the omnibus GOF test for the crude model (p<0.00001), the specific model does not fit the data well.
+
+The results from the adjusted model:
+```{r, warning = FALSE, message = FALSE}
+logit2.res <- lrm(group ~ Age + BMI + Glucose + SkinThickness, data = data1, y = TRUE, x = TRUE)
+residuals(logit2.res, type = "gof")
+```
+Based on the omnibus GOF test for the adjusted model (p<0.00001), the specific model does not fit the data well.
+
+## {-}
+
+
+## Motivating example #2
+Let's look at a logistic regression model where the model specification fits the data well. I'm using the `cancer.csv` data from Kleinbam and Klein's Logistic Regression [text](https://link.springer.com/book/10.1007/978-1-4419-1742-3). This is a study on male patients at Evans County who were followed for 7 years to see if they develop coronary heard disease. You can download the data [here](https://www.dropbox.com/s/z6rqjyy42kc929y/evans.csv?dl=0). The variables include:\
+
+* patientid: unique identifier
+* chd: 0 = no chd, 1 = chd (outcome)
+* cat: 0 = normal catecholamine levels, 1 = high catecholamine levels
+* age: continuous variable in years
+* chl: continuous variable for cholesterol
+* smk: 0 = never smoked, 1 = smoked
+* ecg: 0 = no ecg abnormality, 1 = ecg abnormality
+* dbp: diastolic blood pressure
+* sbp: systolic blood pressure
+* hpt: 0 = no high blood pressure, 1 = high blood pressure
+* CATxHPT: interaction term between cat x hpt
+* CATxCHL: interaction term between cat x chl
+
+```{r, warning = FALSE, message = FALSE}
+data2 <- read.csv("evans.csv", header = TRUE)
+head(data2)
+```
+
+The outcome is coronary heard disease `chd` and it is a dichotomous variable. We can construct a logistic regression model to see what factors (age, cholesterol, smoking status, catecholamin levels, and ECG abnormality) were significantly associated with coronary heart disease:\
+
+<div align="center">$logit( E[CHD_i | X_i]) = logit(p_i) = ln(\frac{p_i}{1 - p_i}) = \beta_0 + \beta_1 (age)_{i} + \beta_2 (chl)_{i} + \beta_3 (smk)_{i} + \beta_4 (cat)_{i} + \beta_5 (ecg)_{i} + \epsilon$</div>\
+
+```{r, warning = FALSE, message = FALSE}
+logit3 <- glm(chd ~ age + chl + smk + cat + ecg, data = data2, family = "binomial"(link = logit))
+summary(logit3)
+confint(logit3)
+
+### Exponentiate the coefficients
+exp(coef(logit3))
+exp(confint(logit3))
+```
+
+## Let's check the goodness of fit of this model {.tabset}
+
+### HL GOF tests
+The results of the HF GOF test indicate that the logistic regression is a good fit to the observed data (p=0.062). Additionally, the plot of the predicted and observed probabilities are not over or underestimating the probabilities. 
+
+```{r, warning}
+### Method 1: 
+hl_gof <- hoslem.test(data2$chd, fitted(logit3), g = 10)
+hl_gof
+
+### Method 2:
+performance_hosmer(logit3, n_bins = 10)
+
+### Method 3:
+hltest(logit3, G = 10)
+
+### Plot the predicted against the observed:
+plotCalibration(data = data2, cOutcome = 3, predRisk = fitted(logit3), groups= 10)
+```
+### Omnibus GOF test
+The results of the Omnibus GOF test also indicate that the logistic regression model is a good fit to the observed data (p=0.369). 
+
+```{r, warning = FALSE, message = FALSE}
+logit2.res <- lrm(chd ~ age + chl + smk + cat + ecg, data = data2, y = TRUE, x = TRUE)
+residuals(logit2.res, type = "gof")
+```
+
+## Conclusions
+Logistic regression models are useful when you have an outcome variable that is dichotomous. However, the model may not fit the data very well. Using goodness of fit tests will help determine whether the logistic regression model is the correct specification for your data. We demonstrated using a logistic regression model is poorly specified in the `diabetes.csv` data. We also demonstrated who the logistic regression is correctly specified in the `evans.csv` data. You should not always assume that the logistic regression model is the best specification for your data. However, when the GOF results indicate that the model is a poor fit, you may want to consider the covariates in the model or a different specification (e.g., probit model).
+
+## Acknowledgements
+The text that I used to understand the different types of tests used to assess the quality of the logistic regression model is Kleinbaum DG and Klein M. Logistic Regression: A Self-Learning Text; the [book's website](http://web1.sph.emory.edu/dkleinb/logreg3.htm) contains useful information that compliments the text. \
+
+Equally helpful is a website by Jonathan Bartlett called [The Stats Geek](https://thestatsgeek.com/2014/02/16/the-hosmer-lemeshow-goodness-of-fit-test-for-logistic-regression/) where he succinctly describes and provides codes for performing the Hosmer-Lemeshow GOF test in R. 
+
+I learned about the modified Hosmer-Lemeshow GOF test when I reviewed the `largesamplehl` package, which can be found [here](https://rdrr.io/github/gnattino/largesamplehl/f/README.md). 
+
+Several StackExchange threads were helpful in writing this tutorial: [link1](https://stats.stackexchange.com/questions/169438/evaluating-logistic-regression-and-interpretation-of-hosmer-lemeshow-goodness-of), [link2](https://stats.stackexchange.com/questions/273966/logistic-regression-with-poor-goodness-of-fit-hosmer-lemeshow), and [link3](https://stats.stackexchange.com/questions/169000/goodness-of-fit-test-in-logistic-regression-which-fit-do-we-want-to-test).
+
+## Contact
+These tutorials are a work in progress, so they may contain errors. I highly recommend you seek out statistical consult if you plan on running any analysis meant for publication. Any comments and suggestions can be sent to: internal.validity.blog@gmail.com
+
