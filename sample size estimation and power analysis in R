@@ -1,0 +1,351 @@
+---
+title: "Sample Size Estimation and Power Analysis"
+author: "Mark Bounthavong"
+date: "12/29/2021"
+output:
+  tufte::tufte_html: default
+---
+
+<style type="text/css">
+.math {
+  font-size: 12pt;
+}
+</style>
+
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE) ### global option for the document
+
+library("tufte")
+library("pwr")
+```
+
+
+
+## Introduction
+
+Estimating the sample size for a prospective study is one of the first things that researchers do prior to enrolling patients. Doing this exercise helps the researcher to determine if they could feasibly enroll the necessary number of patients to answer the research question they developed. If a study's estimated sample size was over a million patients, it would be a very daunting project to undertake. Knowing this information at the beginning of a study design helps to calibrate and adjust expectations to more reasonable levels. 
+
+In this tutorial, you will learn how to use R to:
+
+```{marginfigure, echo = TRUE}
+In this course, we will use `R` to estimate sample size and perform power analysis. Alternatively, you can also download and use [G*Power](https://www.psychologie.hhu.de/arbeitsgruppen/allgemeine-psychologie-und-arbeitspsychologie/gpower) to perform these exercises. 
+```
+
+1) estimate sample size for a prospective study (e.g., randomized controlled trial) 
+2) determine how much power you have to detect a difference if one existed (post hoc analysis)
+
+If you are performing a prospective study where you need to enroll patients, estimating the optimal number of patients is necessary for your Statistical Analysis Plan. 
+
+If you are performing a retrospective study, you can determine how much power you have to detect a difference if one existed. This is not commonly done unless you have a non-significant value and want to determine if you have a high potential of type II error due to a small sample. 
+
+
+## Sample size estimation
+
+Before enrolling patients, you want to make sure that you estimate the optimal number of patients you'll need for your study. It would not be efficient if you enrolled everyone into your study because that would be costly and unethical. 
+
+## Sample size estimations for two proportions
+
+```{marginfigure, echo = TRUE}
+This is a common sample size calculation when you have two groups and the outcome is dichotomous (e.g., Yes / No)
+```
+
+Let's assume that you were asked to estimate the number of patients that would be needed for an upcoming randomized controlled trial. The study's primary aim is to estimate the efficacy of Treatment A versus Treatment B. The main end point is a dichotomous variable: "Response" or "No response." 
+
+The null hypothesis is:
+
+> $H_{0}$: There is no difference in the proportion of responders between Treatment A and Treatment B
+
+The alternative hypothesis is:
+
+> $H_{a}$: There is a difference in the proportion of responders between Treatment A and Treatment B
+
+To determine the sample size needed to detect a meaningful difference in the proportion of responders between Treatment A and Treatment B, we need the following information: 
+
+```{marginfigure, echo = TRUE}
+The alpha level is the threshold where you make the determination whether something is statistically significantly different. We normally use an alpha level of 0.05 (type I error). This is the convention for most biomedical sciences, but it can vary depending on the situation (e.g., multiple comparisons). 
+```
+
+```{marginfigure, echo = TRUE}
+Effect size is the standardized difference one would expect to see between treatment groups. This is an estimate and something that is usually based on past studies. Often times, researchers have to make an educated guess what the effect size is. 
+```
+
+```{marginfigure, echo = TRUE}
+Power (1 - $\beta$) is the ability to correctly reject the null hypothesis if the actual effect of the population is equal to or greater than the specified effect size. (Recall that type II error is $\beta$.) In other words, if you conclude that there is no difference in the sample, then there is no true difference in the population conditioned on the specified effect size
+```
+
+* alpha level (normally two-sided)
+* effect size ($h$)
+* power (set this to 80%)
+
+We'll set the two-tailed alpha level to 0.05. 
+
+We can estimate size $h$ using the following equation:
+
+> $h = \varphi_{1} - \varphi_{2}$,
+
+> where $\varphi_{i} = 2 * arcsine(\sqrt{p_{i}})$
+
+> where $p_{i}$ denotes the proportion in treatment $i$ that were classified as "responders."
+
+We generally set the power to 80%. 
+
+With these pieces of information, we can estimate the sample size for a study with two proportions as the outcome using the following formula:
+
+```{marginfigure}
+With `R` you will not need to use this formula. However, if you decide to estimate sample size by hand, you need to make sure to use the correct $Z_{\alpha/2}$ = 1.96 and $Z_{(1-\beta)}$ = 0.84.
+```
+
+$\begin{aligned}
+n_{i} = \frac{Z_{\alpha/2} + Z_{1 - \beta} + (p_{1}(1 - p_{1})) + (p_{2}(1 - p_{2}))}{(p_{1} - p_{2})^2}
+\end{aligned}$
+
+
+> where $n_{i}$ is the sample size for one group. 
+
+Fortunately, we don't have to do all this work. We can estimate the sample size using the R package `pwr` to do the heavy lifting. 
+
+Make sure you have the package installed by typing `install.packages("pwr")`.
+
+Once installed, make sure to load the package by typing `library("pwr")`.
+
+Use the `pwr.2p.test()` function to find out how many patients are needed. We're going to need a couple of pieces of information. We already explained that you need the alpha level (`alpha = 0.05`), effect size $h$, and power level (`power = 80%`). 
+
+We also need the $p_{i}$ for Treatment A and Treatment B. This is something that we have to guess. We make this guess by looking at past studies and determined the normal rate of response. Sometimes you can't find this in the literature, so you have to make an educated guess. I usually start with 50% because this is a nice neutral point; it's like a coin flip (50-50). I'll assign Treatment B as the reference (e.g., control) with 50% response rate. Now, I'll "guess" that Treatment A is slightly better with a response rate of 60%. Therefore, I have:
+
+> $p_{1} = 0.60$ \
+> $p_{2} = 0.50$
+
+```{marginfigure}
+`pwr.2p.test` makes estimating $h$ easy. All you need to do is enter values for $p_{1}$ and $p_{2}$ into the `ES.h(p1, p2)` function. 
+```
+With these pieces of information, I can estimate the sample size required to detect a difference in "response" rate between Treatment A and Treatment B that is 10% ($p_{1}$ - $p_{2}$) with an alpha of 5% and power of 80%. 
+
+::: {.fullwidth}
+```{r, echo = TRUE}
+### alpha = sig.level option and is equal to 0.05
+### power = 0.80
+### p1 = 0.50 
+### p2 = 0.60
+
+power1 <-pwr.2p.test(h = ES.h(p1 = 0.60, p2 = 0.50), sig.level = 0.05, power = .80)
+power1
+```
+:::
+
+The effect size `h` is 0.201, and the sample `n` is 387.2 or 388 rounded to the nearest whole number. This `n` is only for one group. We assume that this is 1 to 1 ratio. Hence, based on the parameters of our study, we need approximately 388 patients in Treatment A and 388 patients in Treatment B to detect a difference of 10% response with an alpha of 0.05 and power of 80%. 
+
+
+## Power analysis for two proportions
+
+```{marginfigure}
+Power (1 - $\beta$) is the ability to correctly reject the null hypothesis if the actual effect of the population is equal to or greater than the specified effect size. In other words, if you conclude that there is no difference in the sample, then there is no true difference in the population conditioned on the specified effect size
+```
+
+We can also use the plot feature to see how the power level changes with varying sample sizes. As the sample size goes up, power increases. As the sample size goes down, power decreases. This is important to understand. As we increase our sample size, we reduce the uncertainty around the estimates. By reducing this uncertainty, we gain greater precision in our estimates, which results in greater confidence in our ability to avoid making a type II error. 
+
+::: {.fullwidth}
+```{r}
+### We can plot the power relative to different levels of the sample size. 
+plot(power1)
+```
+:::
+
+Let's change the $p_{i}$ and see how the power level change; we are fixing our sample size at 388 for each group with an alpha of 0.05. 
+We create a sequence of values by varying the proportion of "responders" for Treatment A. We will change these from 50% to 100% in intervals of 5%. 
+
+```{r, echo = TRUE}
+p1 <- seq(0.5, 1.0, 0.05)
+power1 <-pwr.2p.test(h = ES.h(p1 = p1, p2 = 0.50),
+                     n = 388,
+                     sig.level = 0.05)
+powerchange <- data.frame(p1, power = power1$power * 100)
+plot(powerchange$p1, 
+     powerchange$power, 
+     type = "b", 
+     xlab = "Proportion of Responders in Treatment A", 
+     ylab = "Power (%)")
+```
+
+We can also write a function for this:
+
+```{marginfigure, echo = TRUE}
+Learning to write functions can make programming much easier. In this example, I wrote a function called `iteration()` that will allow me to input parameters to generate the power level iterated at different values of `p1`.
+```
+
+```{r, echo = TRUE}
+iteration <- function(p_i, P_i, i_i, p2, n, alpha) {
+              p1 <- seq(p_i, P_i, i_i)
+              power1 <-pwr.2p.test(h = ES.h(p1 = p1, p2 = p2),
+                                   n = n,
+                                   sig.level = alpha)
+              powerchange <- data.frame(p1, power = power1$power * 100)
+              powerchange
+}
+
+iteration(0.5, 1.0, 0.05, 0.50, 388, 0.05)
+```
+
+## Sample size estimations for two averages
+
+```{marginfigure}
+This is another common sample size estimation for two groups when the outcome is a continuous variable.
+```
+Now let's estimate the sample size for a study where we are comparing the averages between two groups. Let's suppose that we are working on a randomized controlled trial that seeks to evaluate the difference in the average change in hemogloblin A1c (HbA1c) from baseline between Treatment A and Treatment B. 
+
+The null hypothesis is:
+
+> $H_{0}$: There is no difference in the average change in HbA1c from baseline between Treatment A and Treatment B
+
+The alternative hypothesis is:
+
+> $H_{a}$: There is a difference in the average change in HbA1c from baseline between Treatment A and Treatment B
+
+To determine the sample size needed to detect a meaningful difference in the average HbA1c change from baseline between Treatment A and Treatment B, we can use the following formula:
+
+```{marginfigure}
+With `R` you will not need to use this formula. However, if you decide to estimate sample size by hand, you need to make sure to use the correct $Z_{\alpha/2}$ = 1.96 and $Z_{(1-\beta)}$ = 0.84.
+```
+
+$\begin{aligned}
+n_{i} = \frac{2 * (Z_{\alpha/2} + Z_{1 - \beta})^2}{(\frac{\mu_{1} - \mu_{2}}{\sigma_{pooled}})^2}
+\end{aligned}$
+
+> where $n_{i}$ is the sample size for one of the groups, \
+> $\mu_{1}$ and $\mu_{2}$ are the average changes in HbA1c from baseline for Treatment A and Treatment B, respectively
+
+We also need the following information: 
+
+* alpha level (normally two-sided)
+* effect size (Cohen's $d$)
+* power (set this to 80%)
+
+We'll set the two-tailed alpha level to 0.05. 
+
+```{marginfigure}
+There are other formulas that provide standardized measures such as Hedges $g$. However, it is not always clear what the standardize effect size means. The interpretation of effect size varies, but common convention recommends the following: \
+$d$ = 0.2 (small effect) \
+$d$ = 0.5 (medium effect) \
+$d$ = 0.8 (large effect)
+```
+
+The effect size, also known as Cohen's $d$, is estimated using the following equation:
+
+$\begin{aligned}
+d = \frac{\mu_{1} - \mu_{2}}{\sigma_{pooled}}
+\end{aligned}$
+
+The pooled standard deviation is estimated using the following formula:
+
+```{marginfigure}
+Sometimes it is not easy figuring out the pooled standard deviation ($\sigma_{pooled}$). So, you will have to make an educated guess. 
+```
+
+$\begin{aligned}
+\sigma_{pooled} = \sqrt{\frac{sd_{1}^2 + sd_{2}^2}{2}}
+\end{aligned}$
+
+Once again, the R `pwr` package can make this task easy for us. However, we'll need to estimate the Cohen's $d$. 
+
+Let's assume that the average change in HbA1c from baseline for Treatment A was 1.5% with a standard deviation of 0.25%. Additionally, let's assume that the average change in HbA1c from baseline for Treatment B was 1.0% with a standard deviation of 0.20. 
+
+First, we'll calculate the pooled standard deviation ($\sigma_{pooled}$):
+
+```{r, echo = TRUE}
+sd1 <- 0.25
+sd2 <- 0.30
+sd_pooled <- sqrt((sd1 +sd2)^2 / 2)
+sd_pooled
+```
+
+Once we have the $\sigma_{pooled}$, we can estimate the Cohen's $d$:
+
+```{r, echo = TRUE}
+mu1 <- 1.5
+mu2 <- 1.0
+d <- (mu1 - mu2) / sd_pooled
+d
+```
+
+The Cohen's $d$ is 1.29, which is considerd a large effect size. 
+
+```{marginfigure}
+Recall that the average change in HbA1c from baseline for Treatment A was 1.5% and 1.0% for Treatment B. 
+```
+
+Now, we can take advantage of the `pwr` package and estimate the sample size needed to detect a difference of 0.5% (1.5% - 1.0%) in the average HbA1c change from baseline between Treatment A and Treatment B with 80% power and a significance threshold of 5%. 
+
+```{marginfigure}
+We will use the `pwr.t.test()` function to estimate the sample size for a study where there are two groups and the outcome is a continuous variable.
+```
+```{r, echo = TRUE}
+### d = Cohen's d
+### power = 0.80
+### alpha = 0.05
+
+n_i <- pwr.t.test(d = d, power = 0.80, sig.level = 0.05)
+n_i
+```
+
+``` {marginfigure}
+Recall that the average change in HbA1c from baseline for Treatment A was 1.5% and 1.0% for Treatment B. Hence, the difference is 0.5%.
+```
+Based on our study parameters, we need 11 patients in each group to detect a difference of 0.5% or greater with 80% power and a significance threshold of 5%. 
+
+
+## Power analysis for two averages
+
+```{marginfigure}
+Power (1 - $\beta$) is the ability to correctly reject the null hypothesis if the actual effect of the population is equal to or greater than the specified effect size. In other words, if you conclude that there is no difference in the sample, then there is no true difference in the population conditioned on the specified effect size
+```
+
+We can plot how the power will change as the sample size changes. As the sample size increases, power increases. This should make sense. Like our previous example with two proportions, as we increase our sample size, we reduce the uncertainty around the estimates. By reducing this uncertainty, we gain greater precision in our estimates, which results in greater confidence in our ability to avoid making a type II error. 
+
+::: {.fullwidth}
+```{r, echo = TRUE}
+### We can plot the power relative to different levels of the sample size. 
+plot(n_i)
+```
+:::
+
+As the sample size increases, our power increases. This makes sense because we have more patients to detect differences that may be smaller; as a result, our power to detect small differences increasees. 
+
+Let’s change the $\mu_{i}$ and see how the power level change; we are fixing our sample size at 11 for each group with an alpha of 0.05.
+
+```{marginfigure}
+Estimating the power is easy. You type the same command, but the only difference is that you enter a value for the sample size for one group (`n`) and make `power = NULL` by removing it from the options. Here is an example: \
+`pwr.t.test(d = d, n = 11, sig.level = 0.05)` 
+```
+
+We create a sequence of values by varying the average change in HbA1c from baseline for Treatment A. We will change these from 0% to 2% in intervals of 0.1%. 
+
+```{r, echo = TRUE}
+mu1 <- seq(0.0, 2.0, 0.1)
+
+d <- (mu1 - mu2) / sd_pooled
+
+power1 <- pwr.t.test(d = d, n = 11, sig.level = 0.05)
+powerchange <- data.frame(d, power = power1$power * 100)
+powerchange
+
+plot(powerchange$d, 
+     powerchange$power, 
+     type = "b", 
+     xlab = "Cohen's d", 
+     ylab = "Power (%)")
+```
+
+This figure shows how the power changes with Cohen's $d$. It has a symmetrical patter because of negative and positive range associated with Cohen's $d$. But the story is the same. As the effect size increases (negative and positive signs do not matter; we only care about the absolute values), the power increases. This makes sense because we only have enough power to detect large differences with the current sample size (which is fixed in this case). If the difference are small, then we do not have enough power with the current sample size of 11. 
+
+## Conclusions
+Sample size estimations and power analysis are very useful tools to determine how many patients you need in your study and how confident you are that you didn't make a type II error. Depending on the type of study, you will need to use different functions from the `pwr` package. I highly encourage you to explore the other functions of the `pwr` package to see if those fit the study design you have planned. 
+
+
+## Acknowledgements
+I generated this tutorial using examples from an excellent website. The `R CRAN` network was a great resource for learning how to use the `pwr` package. I recommend interested students who want to expand their knowledge of sample size estimations and power analysis with other statistical inferences (e.g., paired t test, one-way ANOVA) to explore their vignette on `pwr` at this [link](https://cran.r-project.org/web/packages/pwr/vignettes/pwr-vignette.html). \
+
+I used the Tufte R Markdown package to create the style for this tutorial. The authors of the package are JJ Allaire and Yihui Xie, and their work can be found at this [link](https://rstudio.github.io/tufte/) or on their [GitHub page](https://github.com/rstudio/tufte). \
+
+You can email me with feedback at: `mbounthavong@health.ucsd.edu`. \
+
+This is a work in progress, and I expect to update this in the future. 
