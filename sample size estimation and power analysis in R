@@ -24,6 +24,10 @@ library("pwr")
 
 ## Introduction
 
+```{marginfigure}
+This tutorial is available on [RPubs](https://rpubs.com/mbounthavong/sample_size_power_analysis_R)
+```
+
 Estimating the sample size for a prospective study is one of the first things that researchers do prior to enrolling patients. Doing this exercise helps the researcher to determine if they could feasibly enroll the necessary number of patients to answer the research question they developed. If a study's estimated sample size was over a million patients, it would be a very daunting project to undertake. Knowing this information at the beginning of a study design helps to calibrate and adjust expectations to more reasonable levels. 
 
 In this tutorial, you will learn how to use R to:
@@ -97,7 +101,7 @@ With `R` you will not need to use this formula. However, if you decide to estima
 ```
 
 $\begin{aligned}
-n_{i} = \frac{Z_{\alpha/2} + Z_{1 - \beta} + (p_{1}(1 - p_{1})) + (p_{2}(1 - p_{2}))}{(p_{1} - p_{2})^2}
+n_{i} = \frac{(Z_{\alpha/2} + Z_{1 - \beta})^2 + (p_{1}(1 - p_{1})) + (p_{2}(1 - p_{2}))}{(p_{1} - p_{2})^2}
 \end{aligned}$
 
 
@@ -208,7 +212,7 @@ With `R` you will not need to use this formula. However, if you decide to estima
 ```
 
 $\begin{aligned}
-n_{i} = \frac{2 * (Z_{\alpha/2} + Z_{1 - \beta})^2}{(\frac{\mu_{1} - \mu_{2}}{\sigma_{pooled}})^2}
+n_{i} = \frac{2 \sigma^2 * (Z_{\alpha/2} + Z_{1 - \beta})^2}{({\mu_{1} - \mu_{2}})^2}
 \end{aligned}$
 
 > where $n_{i}$ is the sample size for one of the groups, \
@@ -247,14 +251,14 @@ $\begin{aligned}
 
 Once again, the R `pwr` package can make this task easy for us. However, we'll need to estimate the Cohen's $d$. 
 
-Let's assume that the average change in HbA1c from baseline for Treatment A was 1.5% with a standard deviation of 0.25%. Additionally, let's assume that the average change in HbA1c from baseline for Treatment B was 1.0% with a standard deviation of 0.20. 
+Since we haven't started the study, we have to make some assumptions of about each treatment strategy's change in HbA1c. You can do this by reviewing the literature and getting a general sense of what is considered the average change in HbA1c and then make an educated guess. For our example, let's assume that the expected average change in HbA1c from baseline for Treatment A was 1.5% with a standard deviation of 0.25%. Additionally, let's assume that the expected average change in HbA1c from baseline for Treatment B was 1.0% with a standard deviation of 0.20. 
 
 First, we'll calculate the pooled standard deviation ($\sigma_{pooled}$):
 
 ```{r, echo = TRUE}
 sd1 <- 0.25
 sd2 <- 0.30
-sd_pooled <- sqrt((sd1 +sd2)^2 / 2)
+sd_pooled <- sqrt((sd1^2 +sd2^2) / 2)
 sd_pooled
 ```
 
@@ -267,7 +271,7 @@ d <- (mu1 - mu2) / sd_pooled
 d
 ```
 
-The Cohen's $d$ is 1.29, which is considerd a large effect size. 
+The Cohen's $d$ is 1.81, which is considered a large effect size. 
 
 ```{marginfigure}
 Recall that the average change in HbA1c from baseline for Treatment A was 1.5% and 1.0% for Treatment B. 
@@ -290,7 +294,7 @@ n_i
 ``` {marginfigure}
 Recall that the average change in HbA1c from baseline for Treatment A was 1.5% and 1.0% for Treatment B. Hence, the difference is 0.5%.
 ```
-Based on our study parameters, we need 11 patients in each group to detect a difference of 0.5% or greater with 80% power and a significance threshold of 5%. 
+Based on our study parameters, we need 6 patients in each group to detect a difference of 0.5% or greater with 80% power and a significance threshold of 5%. 
 
 
 ## Power analysis for two averages
@@ -301,20 +305,39 @@ Power (1 - $\beta$) is the ability to correctly reject the null hypothesis if th
 
 We can plot how the power will change as the sample size changes. As the sample size increases, power increases. This should make sense. Like our previous example with two proportions, as we increase our sample size, we reduce the uncertainty around the estimates. By reducing this uncertainty, we gain greater precision in our estimates, which results in greater confidence in our ability to avoid making a type II error. 
 
+
 ::: {.fullwidth}
 ```{r, echo = TRUE}
 ### We can plot the power relative to different levels of the sample size. 
-plot(n_i)
+n <- seq(1, 10, 1)
+nchange <- pwr.t.test(d = d, n = n, sig.level = 0.05)
+
+nchange.df <- data.frame(n, power = nchange$power * 100)
+nchange.df
+
+plot(nchange.df$n, 
+     nchange.df$power, 
+     type = "b", 
+     xlab = "Sample size, n", 
+     ylab = "Power (%)")
+
 ```
 :::
 
-As the sample size increases, our power increases. This makes sense because we have more patients to detect differences that may be smaller; as a result, our power to detect small differences increasees. 
+```{marginfigure}
+We don't use the `plot(n_i)` because it doesn't do a good job of plotting the power when the sample size is small. 
+```
 
-Let’s change the $\mu_{i}$ and see how the power level change; we are fixing our sample size at 11 for each group with an alpha of 0.05.
+```{r, fig.margin = TRUE, echo= FALSE}
+plot(n_i)
+```
+As the sample size increases, our power increases. This makes sense because we have more patients to detect differences that may be smaller. But we fixed our effect size (Cohen's $d$), so as we increase the sample size, our power to detect that difference ultimately increases. 
+
+Let’s change the $\mu_{i}$ and see how the power level change; we are fixing our sample size at 6 for each group with an alpha of 0.05.
 
 ```{marginfigure}
 Estimating the power is easy. You type the same command, but the only difference is that you enter a value for the sample size for one group (`n`) and make `power = NULL` by removing it from the options. Here is an example: \
-`pwr.t.test(d = d, n = 11, sig.level = 0.05)` 
+`pwr.t.test(d = d, n = 6, sig.level = 0.05)` 
 ```
 
 We create a sequence of values by varying the average change in HbA1c from baseline for Treatment A. We will change these from 0% to 2% in intervals of 0.1%. 
@@ -324,7 +347,7 @@ mu1 <- seq(0.0, 2.0, 0.1)
 
 d <- (mu1 - mu2) / sd_pooled
 
-power1 <- pwr.t.test(d = d, n = 11, sig.level = 0.05)
+power1 <- pwr.t.test(d = d, n = 6, sig.level = 0.05)
 powerchange <- data.frame(d, power = power1$power * 100)
 powerchange
 
@@ -335,7 +358,160 @@ plot(powerchange$d,
      ylab = "Power (%)")
 ```
 
-This figure shows how the power changes with Cohen's $d$. It has a symmetrical patter because of negative and positive range associated with Cohen's $d$. But the story is the same. As the effect size increases (negative and positive signs do not matter; we only care about the absolute values), the power increases. This makes sense because we only have enough power to detect large differences with the current sample size (which is fixed in this case). If the difference are small, then we do not have enough power with the current sample size of 11. 
+This figure shows how the power changes with Cohen's $d$. It has a symmetrical patter because of negative and positive range associated with Cohen's $d$. But the story is the same. As the effect size increases (negative and positive signs do not matter; we only care about the absolute values), the power increases. This makes sense because we only have enough power to detect large differences with the current sample size (which is fixed in this case). If the differences are small, then we do not have enough power with the current sample size of 6. 
+
+## Sample size estimation for paired data (before and after)
+So far, we discussed how to perform sample size estimations for "between-groups" comparisons. However, many studies investigate the "within-group" changes. This are paired data, which means that the observation for one data point is dependent on another observation. A common study design where paired data is collected are longitudinal studies. Theses types of studies involve repeated measure. For example a pretest posttest study design will measure a data point for a patient at baseline and then repeat that measurement at another point in time. In the figure, Patient A has two measurements at $t_{0}$ and $t_{f}$. Since these measurements were made in the same person, the change is "within" the patient. Alternatively, we can think of this as a "repeated" measure since the patient had the measurement performed twice. 
+
+```{r , echo=FALSE, fig.cap="Figure caption: Pretest-Posttest (repeated measures) framework", out.width = '100%'}
+knitr::include_graphics("Figure 1A.jpg")
+```
+
+When you have a study where you are performing a paired t test, you can use the same `pwr.t.test()` function for a two sample test from the `pwr` package. 
+
+Let's assume that we want to conduct a prospective study measure the weight change of a cohort of patients who started a diet. You don't want to enroll enough patients to detect a 5 lb reduction in the weight 3 weeks after the diet started. Let's assume that at baseline the expected average weight for the cohort was 130 lbs with a standard deviation of 11. After 3 weeks of diet, the expected average weight was 125 lbs with a standard deviation of 12. 
+
+We can estimate the effect size (Cohen's $d_{z}$) for a paired t test. 
+
+```{marginfigure}
+$\rho$ can range between 0 and 1 where 0 means no correlation and 1 means perfect correlation. For sample size estimations, we can start at 0.5 if we're uncertain of the actual correlation. 
+```
+
+$\begin{aligned}
+d_{z} = \frac{ | \mu_{z} |}{\sigma_{z}} = \frac{| \mu_{x} - \mu_{y} | }{ \sqrt{\sigma_{x}^{2} + \sigma_{y}^{2} - 2 \rho_{x, y} \sigma_{x} \sigma_{y}}}
+\end{aligned}$
+
+> $x$ denotes "before" (or baseline) \
+> $y$ denotes "after" \
+> $d_{z}$ denotes the Cohen's $d$ for paired analysis \
+> $\rho$ denotes the correlation between the measures before and after the diet. (For simplicity, I use 0.50 if I don't have prior information about this correlation.) 
+
+```{r, echo = TRUE}
+### Parameters for paired analysis or a pretest-posttest study design
+
+mu_x <- 130     ### Average weight before the diet (baseline)
+mu_y <- 125     ### Average weight after the diet
+
+sd_x <- 11      ### Standard deviation before the diet
+sd_y <- 12      ### Standard deviation after the diet
+
+rho <- 0.5      ### Correlation between measures before and after the diet
+
+sd_z <- sqrt(sd_x^2 + sd_y^2 - 2*rho*sd_x*sd_y)
+  
+d_z <- abs(mu_x - mu_y) / sd_z
+d_z
+```
+
+The Cohen's $d_{z}$ is 0.433. We can input this into the `pwr.t.test()` function. 
+
+:::{.fullwidth}
+```{r}
+n.paired <- pwr.t.test(d = d_z, power = 0.80, sig.level = 0.05, type = "paired")
+n.paired
+```
+:::
+
+We need 44 patients with two measurements (before and after) they implement their diet to detect a difference of 5 lbs with 80% power and a significance level of 0.05. 
+
+
+## Power analysis of paired samples (paired t test)
+We can plot how the power will change as the sample size changes for the paired t test analysis. As the sample size increases, power increases. This should make sense. Like our previous examples, as we increase our sample size, we reduce the uncertainty around the estimates. By reducing this uncertainty, we gain greater precision in our estimates, which results in greater confidence in our ability to avoid making a type II error. 
+
+
+:::{.fullwidth}
+```{r, echo = TRUE}
+### We can plot the power relative to different levels of the sample size for paired analysis. 
+n_z <- seq(1, 80, 5)
+n_z.change <- pwr.t.test(d = d_z, n = n_z, sig.level = 0.05, type = "paired")
+
+n_z.change.df <- data.frame(n_z, power = n_z.change$power * 100)
+n_z.change.df
+```
+:::
+
+```{r, echo = TRUE, fig.cap = "We increase the sample size from 1 to 80 at 5-unit intervals."}
+plot(n_z.change.df$n, 
+     n_z.change.df$power, 
+     type = "b", 
+     xlab = "Sample size, n", 
+     ylab = "Power (%)")
+
+```
+
+
+As the sample size increases, we generate more power to detect a difference of 5 lbs with a significance level of 0.05 and a fixed sample size of 44 patients with two measurements (before and after) they implement their diet. 
+
+Let's see how power changes when we change the effect size. Let's change the average weight after the patients implement their diet. Instead of an average of 125 lbs, let's see how the power will change when we reduce that to 100 lbs. 
+
+```{r, echo = TRUE, fig.cap = "We vary the average weight $\\mu_{y}$ between 50 lbs and 130 lbs in intervals of 5 lbs."}
+### Vary the mu_y from 50 lbs to 130 lbs in intervals of 5 lbs.
+mu_y <- seq(50, 130, 5)
+
+d_z <- abs(mu_x - mu_y) / sd_z
+
+n_z.change <- pwr.t.test(d = d_z, n = 44, sig.level = 0.05)
+n_z.change.df <- data.frame(d_z, power = n_z.change$power * 100)
+n_z.change.df
+
+plot(n_z.change.df$d_z, 
+     n_z.change.df$power, 
+     type = "b", 
+     xlab = "Cohen's d_z", 
+     ylab = "Power (%)",
+     xlim = c(0, 2))
+```
+
+When we increase the effect size (Cohen's $d_{z}$), our power goes up; recall that the sample size is fixed at 44 and significance level is 0.05. But when the effect size gets smaller (or when the average weight loss shrinks), we lose power to detect a difference because our sample size is too small. We'll need to increase our sample size to have a reasonable power to detect small differences. 
+
+We can also see how power changes when we vary $\rho$. If we set $\rho$ = 0, then the Cohen's $d_{z}$ = 0.307. If we set $\rho$ = 1, then the Cohen's $d_{z}$ = 5.
+
+```{r, echo = TRUE}
+mu_x <- 130     ### Average weight before the diet (baseline)
+mu_y <- 125     ### Average weight after the diet
+
+sd_x <- 11      ### Standard deviation before the diet
+sd_y <- 12      ### Standard deviation after the diet
+
+sd_z_1 <- sqrt(sd_x^2 + sd_y^2 - 2*1*sd_x*sd_y)
+sd_z_0 <- sqrt(sd_x^2 + sd_y^2 - 2*0*sd_x*sd_y)
+
+d_z_1 <- abs(mu_x - mu_y) / sd_z_1
+d_z_0 <- abs(mu_x - mu_y) / sd_z_0
+
+d_z_1
+d_z_0
+```
+
+So, higher $\rho$ results in large $d_{z}$ and smaller $\rho$ results in small $d_{z}$ values. 
+
+Let's see how power changes when we change the $\rho$ range from 0 to 1 in intervals of 0.1 units. 
+
+:::{.fullwidth}
+```{r, echo = TRUE}
+rho <- seq(0.0, 1.0, 0.1)
+
+sd_z <- sqrt(sd_x^2 + sd_y^2 - 2*rho*sd_x*sd_y)
+
+d_z <- abs(mu_x - mu_y) / sd_z
+
+rho.change <- pwr.t.test(d = d_z, n = 44, sig.level = 0.05)
+rho.change.df <- data.frame(d_z, power = rho.change$power * 100)
+rho.change.df
+```
+:::
+
+```{r, echo = TRUE, fig.cap = "We vary $\\rho$ from 0 to 1 at intervals of 0.1 unit."}
+plot(rho.change.df$d_z, 
+     rho.change.df$power, 
+     type = "b", 
+     xlab = "Cohen's d_z", 
+     ylab = "Power (%)",
+     xlim = c(0, 1.5))
+```
+
+As $\rho$ increases, our power increases. This makes sense because we are nearing "perfect" correlation, which would require less sample to detect a difference if one existed. As the correlation becomes less "perfect" our power drops suggesting that we need to increase our sample size to make up for this poor correlation. 
+
 
 ## Conclusions
 Sample size estimations and power analysis are very useful tools to determine how many patients you need in your study and how confident you are that you didn't make a type II error. Depending on the type of study, you will need to use different functions from the `pwr` package. I highly encourage you to explore the other functions of the `pwr` package to see if those fit the study design you have planned. 
@@ -346,6 +522,6 @@ I generated this tutorial using examples from an excellent website. The `R CRAN`
 
 I used the Tufte R Markdown package to create the style for this tutorial. The authors of the package are JJ Allaire and Yihui Xie, and their work can be found at this [link](https://rstudio.github.io/tufte/) or on their [GitHub page](https://github.com/rstudio/tufte). \
 
-You can email me with feedback at: `internal.validity.blog@gmail.com`. \
+You can email me with feedback at: `mbounthavong@health.ucsd.edu`. \
 
 This is a work in progress, and I expect to update this in the future. 
