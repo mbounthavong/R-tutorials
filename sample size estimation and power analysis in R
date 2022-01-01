@@ -513,6 +513,53 @@ plot(rho.change.df$d_z,
 As $\rho$ increases, our power increases. This makes sense because we are nearing "perfect" correlation, which would require less sample to detect a difference if one existed. As the correlation becomes less "perfect" our power drops suggesting that we need to increase our sample size to make up for this poor correlation. 
 
 
+## Power analysis with unequal sample sizes
+
+```{marginfigure}
+It is common for the sample size to be different. The `pwr.t2n.test()` is a useful tool to help estimate the power given the sample sizes of the study. 
+```
+
+It is common to perform power analysis on a study where the sample sizes between groups are different. 
+
+Suppose you have a retrospective study where the patients were prescribed Treatment A and Treatment B. There were 130 patients in Treatment A ($n_{A}$ = 130) and 120 patients in Treatment B ($n_{B}$ = 120). The average change in HbA1c was 1.5% with a standard deviation of 1.25% in Treatment A, and the average change in HbA1c was 1.4% with a standard deviation of 1.01% in Treatment B. 
+
+First, we'll calculate the pooled standard deviation ($\sigma_{pooled}$):
+
+```{r, echo = TRUE}
+sd1 <- 1.25
+sd2 <- 1.01
+sd_pooled <- sqrt((sd1^2 +sd2^2) / 2)
+sd_pooled
+```
+
+Once we have the $\sigma_{pooled}$, we can estimate the Cohen's $d$:
+
+```{r, echo = TRUE}
+mu1 <- 1.5
+mu2 <- 1.4
+d <- (mu1 - mu2) / sd_pooled
+d
+```
+
+Now, we can estimate the power with the different sample sizes across the groups ($n_{A}$ = 130, $n_{B}$ = 120).
+
+:::{.fullwidth}
+```{r, echo = TRUE}
+n1 <- 130
+n2 <- 120
+
+power.diff_n <- pwr.t2n.test(d = d, n1 = n1, n2 = n2, sig.level = 0.05)
+power.diff_n
+```
+:::
+
+```{marginfigure}
+Since the average HbA1c change from baseline for Treatment A is 1.5% and 1.4% for Treatment B, the average difference in the HbA1c change from baseline is 0.1%. This is a difference (difference between the groups) of the differences (difference from baseline within the group) calculation. 
+```
+
+You only have 11% power to detect a difference of 0.10% in the HbA1c change from baseline. This means that you are underpowered to detect a difference of 0.1% or greater in the HbA1c change from baseline with $n_{A}$ = 130, $n_{B}$ = 120 = 120, and a significance level of 0.05. When studies are underpowered, there is a high potential for type II error. The only way to address this problem is to enroll more patients or expand the sample by relaxing inclusion criteria. But this may increase the threats to the study's internal validity.
+
+
 ## Conclusions
 Sample size estimations and power analysis are very useful tools to determine how many patients you need in your study and how confident you are that you didn't make a type II error. Depending on the type of study, you will need to use different functions from the `pwr` package. I highly encourage you to explore the other functions of the `pwr` package to see if those fit the study design you have planned. 
 
