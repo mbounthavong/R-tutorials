@@ -129,8 +129,8 @@ With these pieces of information, I can estimate the sample size required to det
 ```{r, echo = TRUE}
 ### alpha = sig.level option and is equal to 0.05
 ### power = 0.80
-### p1 = 0.50 
-### p2 = 0.60
+### p1 = 0.60 
+### p2 = 0.50
 
 power1 <-pwr.2p.test(h = ES.h(p1 = 0.60, p2 = 0.50), sig.level = 0.05, power = .80)
 power1
@@ -569,6 +569,6 @@ I generated this tutorial using examples from an excellent website. The `R CRAN`
 
 I used the Tufte R Markdown package to create the style for this tutorial. The authors of the package are JJ Allaire and Yihui Xie, and their work can be found at this [link](https://rstudio.github.io/tufte/) or on their [GitHub page](https://github.com/rstudio/tufte). \
 
-You can email me with feedback at: `internal.validity.blog@gmail.com`. \
+You can email me with feedback at: `mbounthavong@health.ucsd.edu`. \
 
 This is a work in progress, and I expect to update this in the future. 
