@@ -123,6 +123,7 @@ We also need the $p_{i}$ for Treatment A and Treatment B. This is something that
 ```{marginfigure}
 `pwr.2p.test` makes estimating $h$ easy. All you need to do is enter values for $p_{1}$ and $p_{2}$ into the `ES.h(p1, p2)` function. 
 ```
+
 With these pieces of information, I can estimate the sample size required to detect a difference in "response" rate between Treatment A and Treatment B that is 10% ($p_{1}$ - $p_{2}$) with an alpha of 5% and power of 80%. 
 
 ::: {.fullwidth}
@@ -137,7 +138,7 @@ power1
 ```
 :::
 
-The effect size `h` is 0.201, and the sample `n` is 387.2 or 388 rounded to the nearest whole number. This `n` is only for one group. We assume that this is 1 to 1 ratio. Hence, based on the parameters of our study, we need approximately 388 patients in Treatment A and 388 patients in Treatment B to detect a difference of 10% response with an alpha of 0.05 and power of 80%. 
+The effect size `h` is 0.201, and the sample `n` is 387.2 or 388 rounded to the nearest whole number. This `n` is only for one group. We assume that this is 1 to 1 ratio. Hence, based on the parameters of our study, we need approximately 388 patients in Treatment A and 388 patients in Treatment B to detect a difference of 10% response or greater with an alpha of 0.05 and power of 80%. 
 
 
 ## Power analysis for two proportions
@@ -331,6 +332,7 @@ We don't use the `plot(n_i)` because it doesn't do a good job of plotting the po
 ```{r, fig.margin = TRUE, echo= FALSE}
 plot(n_i)
 ```
+
 As the sample size increases, our power increases. This makes sense because we have more patients to detect differences that may be smaller. But we fixed our effect size (Cohen's $d$), so as we increase the sample size, our power to detect that difference ultimately increases. 
 
 Let’s change the $\mu_{i}$ and see how the power level change; we are fixing our sample size at 6 for each group with an alpha of 0.05.
@@ -369,7 +371,7 @@ knitr::include_graphics("Figure 1A.jpg")
 
 When you have a study where you are performing a paired t test, you can use the same `pwr.t.test()` function for a two sample test from the `pwr` package. 
 
-Let's assume that we want to conduct a prospective study measure the weight change of a cohort of patients who started a diet. You don't want to enroll enough patients to detect a 5 lb reduction in the weight 3 weeks after the diet started. Let's assume that at baseline the expected average weight for the cohort was 130 lbs with a standard deviation of 11. After 3 weeks of diet, the expected average weight was 125 lbs with a standard deviation of 12. 
+Let's assume that we want to conduct a prospective study measure the weight change of a cohort of patients who started a diet. You want to enroll enough patients to detect a 5 lb reduction in the weight 3 weeks after the diet started. Let's assume that at baseline the expected average weight for the cohort was 130 lbs with a standard deviation of 11. After 3 weeks of diet, the expected average weight was 125 lbs with a standard deviation of 12. 
 
 We can estimate the effect size (Cohen's $d_{z}$) for a paired t test. 
 
@@ -412,7 +414,7 @@ n.paired
 ```
 :::
 
-We need 44 patients with two measurements (before and after) they implement their diet to detect a difference of 5 lbs with 80% power and a significance level of 0.05. 
+We need 44 patients with two measurements (before and after) they implement their diet to detect a difference of 5 lbs or greater with 80% power and a significance level of 0.05. 
 
 
 ## Power analysis of paired samples (paired t test)
@@ -557,7 +559,7 @@ power.diff_n
 Since the average HbA1c change from baseline for Treatment A is 1.5% and 1.4% for Treatment B, the average difference in the HbA1c change from baseline is 0.1%. This is a difference (difference between the groups) of the differences (difference from baseline within the group) calculation. 
 ```
 
-You only have 11% power to detect a difference of 0.10% in the HbA1c change from baseline. This means that you are underpowered to detect a difference of 0.1% or greater in the HbA1c change from baseline with $n_{A}$ = 130, $n_{B}$ = 120 = 120, and a significance level of 0.05. When studies are underpowered, there is a high potential for type II error. The only way to address this problem is to enroll more patients or expand the sample by relaxing inclusion criteria. But this may increase the threats to the study's internal validity.
+You only have 11% power to detect a difference of 0.10% or greater in the HbA1c change from baseline. This means that you are underpowered to detect a difference of 0.10% or greater in the HbA1c change from baseline with $n_{A}$ = 130, $n_{B}$ = 120, and a significance level of 0.05. When studies are underpowered, there is a high potential for type II error. The only way to address this problem is to enroll more patients or expand the sample by relaxing inclusion criteria. But this may increase the threats to the study's internal validity.
 
 
 ## Conclusions
