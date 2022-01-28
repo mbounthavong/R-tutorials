@@ -1,0 +1,498 @@
+---
+title: "R tutorial on linear regression model"
+author: "Mark Bounthavong"
+date: "01/25/2022"
+output:   
+    tufte::tufte_html: default
+---
+<style type="text/css">
+.math {
+  font-size: 12pt;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library("tufte")
+```
+
+```{marginfigure}
+We will Use the diabetes.csv data set, which you can download at this [location](https://raw.githubusercontent.com/mbounthavong/R-tutorials/main/diabetes.csv).
+```
+
+# Introduction
+
+Linear regression models (also known as "Ordinary Least Squares" model) allow us to determine if changing the values on a variable is associated with the values of another variable. In other words, if I make a 1-unit change in $X$, how much does Y change? In fact, linear regression is similar to the algebraic equation for a simple line ($Y = mx + b$, where $m$ is the slope, $X$ is the parameter that is changing, and $b$ is the Y-intercept). In biostatistics, we use linear regression models to test the association between two or more variables where the outcome is a continuous data type. 
+
+```{marginfigure}
+In many text books, the linear regression model is called the "Ordinary Least Squares" or OLS model because it minimizes the squared errors (e.g., distance from the best-fit line). 
+```
+
+```{marginfigure}
+The linear regression model is pretty robust when the assumptions don't hold. Regardless, it's good practice to test these assumptions. 
+```
+
+There are several conditions that need to be satisfied in order for us to use the results from a linear regression model. These include:
+
+* Outcome variable is normally distributed (parametric)
+* Observations are independent
+* Residuals are not correlated with the $X$ variables (homoscedasticity)
+* Association between $X$ and $Y$ is linear
+
+However, the linear regression model is pretty robust to violations of these assumptions; hence, it’s popularity. Moreover, it is very easy to interpret as this article will demonstrate. 
+
+
+# Simple linear regression
+
+The structural form of a linear regression model:
+
+<div align="left">$\large Y_i = \beta_0 + \beta_1 X_{1i} + \epsilon$</div> 
+
+Typical notations of the linear regression include:
+
+* $Y_i$ denotes the outcome (or dependent) variable for subject $i$
+* $X_{1i}$ denotes the predictor of interest ($X_1$) for subject $i$
+* $\beta_0$ denotes the Y-intercept when $X$ is zero
+* $\beta_1$ denotes the slope or the change in $Y$ with a 1-unit change in $X$
+* $\epsilon$ denotes the error or residuals
+
+
+# Data
+
+```{marginfigure}
+The UC Irvine Machine Learning Respository contains a lot of datasets that are used to validate their machine learning models. You can check out more about their work at their [website](https://archive.ics.uci.edu/ml/index.php). 
+```
+This tutorial will use the Pima Indians Diabetes Dataset, which you can download from this [GitHub location](https://github.com/mbounthavong/R-tutorials/blob/main/diabetes.csv). The data was originally posted on the UC Irvine Machine Learning Repository, but can be found on [Kaggle](https://www.kaggle.com/uciml/pima-indians-diabetes-database). The Pima Indians Diabetes Dataset orginated from the National Institute of Diabetes and Digestive and Kidney Diseases as part of a study to predict diabetes among adult females (21 years old and older) of Pima Indian heritage.
+
+The following variables are included in the data
+
+* Pregnancies: Number of times pregnant
+* Glucose: Plasma glucose concentration a 2 hours in an oral glucose tolerance test
+* BloodPressure: Diastolic blood pressure (mm Hg)
+* SkinThickness: Triceps skin fold thickness (mm)
+* Insulin: 2-Hour serum insulin (mu U/ml)
+* BMI: Body mass index (weight in kg/(height in m)^2)
+* DiabetesPedigreeFunction: Diabetes pedigree function
+* Age: Age (years)
+* Outcome: Class variable (0 = no diabetes or 1 = diabetes)
+
+# Packages
+You will need to install and load the `ggplot` and `predict3d` packages for this tutorial. 
+
+You will also need to install and load the following packages. 
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+#### Load the libraries
+library("ggplot2")
+# install.packages("predict3d")
+library("predict3d")
+# install.packages("psych")
+library("psych")
+# install.packages("magrittr")
+# library("magrittr") ## allows for rounding using the %>%
+library("dplyr")
+# install.packages("gtsummary") ## Allows for publication ready tables
+library("gtsummary")
+# install.packages("DescTools")
+library("DescTools") ## Needed for normality testing
+# install.packages("nortest")
+library("nortest") ## Needed for normality testing
+# install.packages("lmtest")
+library("lmtest") ## Need for heteroskedasticity testing
+# install.packages("sandwich")
+library("sandwich")  ## Needed for estimating Huber-White sandwich standard errors
+```
+:::
+
+# Load Data
+
+Load the data from the GitHub site. You can use the [`knitr::kable`](https://bookdown.org/yihui/rmarkdown-cookbook/kable.html) function to generate a table. 
+
+:::{.fullwidth}
+```{r}
+#### Load Data
+diabetes.data <- read.csv("https://raw.githubusercontent.com/mbounthavong/R-tutorials/main/diabetes.csv")
+
+knitr::kable(
+  head(diabetes.data), caption = "Table 1. First six rows of the Pima Indians Diabetes Dataset"
+)
+```
+:::
+
+# Visualize the data
+
+Once the data have been loaded, take a look at the summary statistics. You can do this using the `describeBy` function, which is part of the `psych` package.  
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+knitr::kable(
+  describeBy(diabetes.data) %>% round(2) 
+)
+```
+:::
+
+There are 768 subjects with nine variables. We can see that the average number of pregnancies is 3.85 with a standard deviation (SD) of 3.37). We also see that the average age of the sample was 33.24 years (SD, 11.76), average BMI was 31.99 (SD, 7.8), and the average glucose level was 120.89 (SD, 31.97). 
+
+# Motivating example: Evalaute the association between Age and Glucose level
+
+Let's suppose our main research question is to determine whether age was associated with glucose level. We will set the glucose level as our dependent variable and age as our independent variable (or predictor of interest). Then, we update our linear regression model's structural form:
+
+```{marginfigure}
+We call this the "expected" value because we are predicting this using a model. All regression models take existing data and attempt to make predictions. However, if your assumptions are violated, then these predictions are erroneous. As George Box once wrote, "All models are wrong, but some are useful."
+```
+
+<div align="left">$\large E[Glucose_{i} | Age_{i}] = \beta_0 + \beta_1 Age_{i} + \epsilon,$</div>
+
+where $E[Glucose_{i} | Age_{i}]$ denotes the expected Glucose level for subject $i$ given the Age of subject $i$. 
+
+We can also represent this relationship in a directed acyclic graph (DAG) diagram.
+
+```{marginfigure}
+I used DAGitty to generate the DAG diagram. DAGitty can be found [here](http://www.dagitty.net/).
+```
+
+```{r, echo= FALSE, warning = FALSE, message = FALSE, out.width = "50%", fig.cap = "DAG diagram illustrating the causal relationship between Age and Glucose level."}
+knitr::include_graphics("C:\\Users\\mboun\\Dropbox\\Marks blog\\R - Linear regression model\\Figures\\Figure 2_0.jpg")
+```
+
+## Visualize the association between Age and Glucose level
+Let's look at how Age is related to Glucose level by plotting their relationship. We'll do this using `ggplot`. As Age increases, the Glucose level also increases. There appears to be a positive relationship between Age and Glucose level. 
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+### Plot the association between the subject's age and glucose level
+ggplot(diabetes.data, aes(x = Age, y = Glucose)) +
+  geom_point() +
+  stat_smooth()
+```
+:::
+
+```{marginfigure}
+In general, when describing a regression model, $Y$ is denoted as the outcome and $X$ is denoted as the predictor of interest. 
+```
+
+## Constructing the linear regression model
+
+Now, we can construct a linear regression model with Glucose level as the dependent variable and Age as the independent variable (or predictor of interest). We will use the `lm()` function with Glucose level as the $Y$ variable and Age as the $X$ variable. The formula for a regression model in R uses the `~` symbol. For example, if was want to regress Age on Glucose level, we use the notation `Glucose ~ Age`. 
+
+By using the `lm()` function, we can construct the linear regression model: `lm(Glucose ~ Age, data = diabetes.data)`. We can create an object that will contain this linear model; I called this object `linear.model1`. 
+
+We generate the 95% confidence interval (CI) by using the `confint()` function. 
+
+```{marginfigure}
+$\beta_{1}$ coefficient is in the linear regression output as `Age`, which is `0.71642`.
+```
+
+Here is how we put all of this together in R:
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+### Linear regression model (Y = Glucose, X = Age)
+linear.model1 <- lm(Glucose ~ Age, data = diabetes.data)
+summary(linear.model1)
+```
+:::
+
+```{marginfigure}
+The `lm()` function does not generate 95% CI, so you will need to use the `confint()` function. 
+```
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+### Generate the 95% CI
+confint(linear.model1)
+```
+:::
+
+
+## Interpret the linear regression output
+
+```{marginfigure}
+Make sure to have the library `gtsummary` loaded to create tables from the regression output.
+```
+
+We are interested in the coefficients. To make interpreting the output easier, we can create a table to visualize the critical elements.
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+#### Present the output in a table
+model1 <- tbl_regression(linear.model1, intercept = TRUE)
+as_gt(model1) %>% 
+              gt::tab_header("Table 2. Linear regression model output (Glucose ~ Age)") %>% 
+              gt::tab_options(table.align='left')
+```
+:::
+
+The `Intercept` denotes the $Y$ intercept when $X$ is equal to zero. In this case, it would be where Glucose level would be on the linear plot when Age is equal to zero, which is 97.08-units of Glucose.
+
+```{marginfigure}
+When possible, present the coefficient's point estimate and the 95% CI. For example, a 1-year increase in Age is associated with a 0.72-unit increase in Glucose level (95% CI: 0.53, 0.90). 
+```
+The `Age` coefficient denotes the change in Glucose level for a one-unit increase in Age. In other words, a 1-year increase in Age is associated with a 0.72-unit increase in Glucose level. Since the 95% CI is between 0.53-units and 0.90-units of Glucose, it does not include zero, so this association is statistically significant. We can also look a the p-value of the `Age` coefficient to determine whether this is statistically significant (<0.0001). However, it is preferable to present the 95% CI when describing the association between $X$ and $Y$. 
+
+The `Adjusted R squared` denotes the amount of data that are explained by the linear regression model. In other words, the current linear regression model explains 6.8% of the data.
+
+## Visualize predicted model
+
+We can plot the linear form of the model against the actual data using the `ggPredict()` function. 
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+ggPredict(linear.model1, digits = 1, show.point = TRUE, se = TRUE, xpos = 0.5)
+```
+:::
+
+Here is a version without the scatterplot.
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+ggPredict(linear.model1, digits = 1, show.point = FALSE, se = TRUE, xpos = 0.5)
+```
+:::
+
+## Adding a confounder
+
+```{marginfigure}
+We generate a new variable called `pregnancy.history` that is a dichotomous variable (0 = no history of pregnancy and 1 = history of pregnancy).
+```
+
+Let's add to our current model by including a confounder. We have a variable called `Pregnancies` but this provides the number of past pregnancies. We want to create a new variable that has a dichotomous outcome: History of Pregnancy or No history of pregnancy. To do this, we need to to subset the data and create rules. Anyone with 1 or more pregnancies will be coded as `1`. Anyone who does not have a history of pregnancy will be coded as `0`.  
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+#### Generate groups based on pregnancy history (Group 0 = 0, Group 1 = 1 or more pregnancies)
+diabetes.data$pregnancy.history[diabetes.data$Pregnancies == 0] = 0
+diabetes.data$pregnancy.history[diabetes.data$Pregnancies > 0] = 1
+
+table(diabetes.data$pregnancy.history)
+```
+:::
+
+We see that there are 657 women who a history of pregnancy and 111 women with no history of pregnancy. 
+
+A DAG diagram illustrating the relationship between Pregnancy History as a confounder on the Age to Glucose relationship can be drawn. 
+
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, out.width = "50%", fig.cap = "DAG diagram illustrating the causal relationship between Age and Glucose level and Pregnanchy History as a confounder."}
+knitr::include_graphics("C:\\Users\\mboun\\Dropbox\\Marks blog\\R - Linear regression model\\Figures\\Figure 2.jpg")
+```
+
+
+In our linear regression model, we have the following structural form:
+
+<div align="left">$\large E[Glucose_{i} | Age_{i}] = \beta_0 + \beta_1 Age_{i} + \epsilon,$</div>
+
+where $E[Glucose_{i} | Age_{i}]$ denotes the expected Glucose level for subject $i$ given the Age of subject $i$. 
+
+But we can include a confounder `pregnancy.history`:
+
+<div align="left">$\large E[Glucose_{i} | Age_{i}, PregnancyHistory_{i}] = \beta_0 + \beta_1 Age_{i} + \beta_2 Pregnancy History_{i} + \epsilon,$</div>
+
+where $E[Glucose_{i} | Age_{i}, PregnancyHistory_{i}]$ denotes the expected Glucose level for subject $i$ given the Age of subject $i$ controlling for Pregnancy History of subject $i$. 
+
+```{marginfigure}
+All you need to do to add another varialbe in the regression model is to use the `+` symbol. For example `lm(Glucose ~ Age + pregnancy.history, data = diabetes.data)`. 
+```
+
+Using the `lm()` function, we can add `pregnancy.history` to the linear regression model:
+
+Here is how we put all of this together in R:
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+### Linear regression model (Y = Glucose, X1 = Age, X2 = Pregnancy History)
+linear.model2 <- lm(Glucose ~ Age + pregnancy.history, data = diabetes.data)
+summary(linear.model2)
+confint(linear.model2)
+```
+:::
+
+We can present the model output into a table.
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+#### Present the output in a table
+model2 <- tbl_regression(linear.model2, intercept = TRUE)
+as_gt(model2) %>% 
+              gt::tab_header("Table 3. Linear regression model output with confounder (Glucose ~ Age + Pregnancy History)") %>% 
+              gt::tab_options(table.align='left')
+```
+:::
+
+
+You can see that the `Age` coefficient is slightly different from our first model. It is 0.76 with a 95% CI of 0.57, 0.95. Compare this to the previous model's result, which was 0.72; 95% CI: 0.53, 0.90. 
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+#### Merge the two linear regression model's outputs
+model1 <- tbl_regression(linear.model1, intercept = TRUE)
+model2 <- tbl_regression(linear.model2, intercept = TRUE)
+table1 <- tbl_merge(tbls = list(model1, model2),
+          tab_spanner = c("**Model 1**", "**Model 2**"))
+as_gt(table1) %>% 
+              gt::tab_header("Table 4. Comparison between linear regression models [Model 1 (crude) v. Model 2 (adjusted)]") %>% 
+              gt::tab_options(table.align='left')
+```
+:::
+
+Model 1 is considered the crude model or the unadjusted model. Model 2 is the adjusted model because it is adjusting based on the Pregnancy History confounder. Notice that the $\beta_{1, unadjusted}$ is 0.72 which is lower than the $\beta_{1, adjusted}$ result which is 0.76. 
+
+Additionally, the `Adjusted R squared` is higher in model 2 (7.35%) compared to model 1, which was 6.82%. This means that Model 2 does a better job of explaining the data than Model 1. 
+
+Let's plot Model 2's results.
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+ggPredict(linear.model2, digits = 1, show.point = FALSE, se = TRUE, xpos = 0.5)
+```
+:::
+
+```{marginfigure}
+You can derive the difference between the groups with a history of pregnancy and without a history of pregnancy by substracting 102 - 94.5, which is 7.5, the $\beta_{2}$ for `pregnancy.history`. 
+```
+
+We can see that the group that had a history of pregnancy is lower than the group that did not have a history of pregnancy. This makes sense when you look at the `pregnancy.history` coefficient. It is -7.5, which means that a subject with a history of pregnancy is associated with a 7.5 decrease in Glucose level (95% CI: -13.80, -1.15) compared to a subject without a history of pregnancy controlling for age. Therefore, for all ranges of Age, the group with a history of pregnancy will have Glucose levels that are 7.5-unit lower than a group without a history of pregnancy. You can visualize this on the plot; the linear lines do not cross and remain constant across all ranges of Age. But there is a positive correlation betwteen Age and Glucose level. 
+
+# Evaluate residual plots
+
+```{marginfigure}
+It is good practice to look at the residuals of the regression model to make sure that the assumptions hold. 
+```
+
+Recall the assumptions for the linear regression model:
+
+* Outcome variable is normally distributed (parametric)
+* Observations are independent
+* Residuals are not correlated with the $X$ variables (homoscedasticity)
+* Association between $X$ and $Y$ is linear
+
+```{r fig-margin, fig.margin = TRUE, echo = FALSE, fig.cap = "Homoscedasticity v. Heteroscedasticity."}
+knitr::include_graphics("C:\\Users\\mboun\\Dropbox\\Marks blog\\R - Linear regression model\\Figures\\Figure 1.jpg")
+```
+
+We can test to see if the residuals are uncorrelated to with the $X$ variables (homoscedasticity). 
+
+Let's use the crude linear regression model from our previous example:
+
+
+<div align="left">$\large E[Glucose_{i} | Age_{i}] = \beta_0 + \beta_1 Age_{i} + \epsilon,$</div>
+
+where $E[Glucose_{i} | Age_{i}]$ denotes the expected Glucose level for subject $i$ given the Age of subject $i$. 
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+linear.model1 <- lm(Glucose ~ Age, data = diabetes.data)
+summary(linear.model1)
+confint(linear.model1)
+```
+:::
+
+```{marginfigure}
+Since the model generates predictions, we check to see if the residual are correlated with fitted or predicted values of Glucose. If there is an association, then we have heteroscedasticity, which is a violation of the linear regression model assumption. 
+```
+
+We can plot the residuals and see if they are associated with increasing values of the expected or predicted Glucose level. If there is no association, we should expect to see a uniform distribution across all ranges of the expected values of Glucose.
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+#### Plot the residuals against the predicted model (Is it homoscedastic?)
+plot(linear.model1$res ~ linear.model1$fitted)
+```
+:::
+
+Reviewing the residual plot along the fitted values, there doesn't appear to be any evidence of heteroskedasticity. Upon visual inspection, we can see that the residuals are uniform across the expected Glucose level range (also called the "fitted" values). We can verify this visual inspection by performing the Breusch-Pagan test of heteroskedasticity. We will need to install and load the `lmtest` package and use the `bptest()` function. 
+
+```{r, warning = FALSE, message = TRUE}
+bptest(linear.model1)
+```
+
+According to the BP-test results, the p-value is 0.1169, which means that we fail to reject the null that the variance of the residuals are constant. In other words, there are no associations between the residuals of the model and the predicted values generated from the model. 
+
+If, however, there was heteroskedasticity, we could address this by estimating robust standard errors. For linear regression models, the most common method is to use the Huber-White sandwich estimation method. To do this, we need to use the `sandwich` package and the `coeftest()` function. (Note: In practice, I default to the robust standard errors rather than let the `lm()` function estimate these for me.)
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+### Huber-White sandwich estimation
+robust1 <- coeftest(linear.model1, vcov = vcovHC(linear.model1, type = "HC1"))
+robust1
+confint(robust1)
+```
+:::
+
+
+```{marginfigure}
+Recall that the 95% CI is calculated using the standard error (SE). 
+```
+
+Notice that the standard errors are slightly difference from the ones estimated in the previous model. In the previous model, the 95% CI was between 0.530 and 0.902. In the model with the robust standard errors, the 95% CI was between 0.529 and 0.904. The differences are trivial in this example, but could be important when the 95% CI is close to the null value. 
+
+:::{.fullwidth}
+```{r, echo = FALSE, warning = FALSE, message = FALSE, out.width = "150%"}
+knitr::include_graphics("C:\\Users\\mboun\\Dropbox\\Marks blog\\R - Linear regression model\\Figures\\Figure 3.jpg")
+```
+:::
+
+```{marginfigure}
+Comparison of standard errors between robust SE and non-robust SE.
+```
+
+We can also evaluate if the residuals are normally distributed. We can generate a histogram and a Q-Q plot. The historgram has a slight left skew and the Q-Q plot has its tails deviate from the neutral line. 
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+#### Set up the matrix
+par(mfrow = c(1, 2))
+
+#### Histogram of the residuals
+hist(linear.model1$res)
+
+#### QQ-plot of the residuals against the QQ line
+qqnorm(linear.model1$res); qqline(linear.model1$res, col = "2", lwd = 1, lty = 1)
+```
+:::
+
+```{marginfigure}
+You only need to use one of these tests. They will generally give the same results. 
+```
+
+We can also test for the normality of the residuals. Common tests of normality include the Shapiro-Wilk's test, the Jarque Bera test, and the Kolmogorov-Smirnov (Lilliforms) test. I provided their codes below. Despite the differences in their output, the conclusions are all the same: the residuals are not normally distributed. Despite not being normally distributed, the linear regression model is pretty robust to violations of this assumption. You can make a concluding statement that there is an association between Age and Glucose level based on these findings. 
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+#### Test normality using Shapiro-Wilk's test
+shapiro.test(linear.model1$res)
+
+
+#### Test normality using Jarque Bera test
+JarqueBeraTest(linear.model1$res, robust = FALSE) ### Does not use robust method
+
+#### Test normality using the Kolmogorov-Smirnov test
+lillie.test(linear.model1$res)
+```
+:::
+
+
+# Conclusions
+Linear regression models are useful for understanding the relationship between a predictor variable and outcome varaible if the outcome variable is continuous. Additionally, you can add confounders into the regression model to control for their effects. Once you control for confounders, you should compare the results with the crude model to see how the relationship between the predictor of interest and outcome changes. Finally, after reviewing the results of the linear regression model, it is good practice to look at the residuals and verify that the assumptions of homoscedasticity and normality continue to hold. 
+
+
+# Acknowledgements
+I would like to acknowledge the UC Irvine Machine Learning Repository for providing the dataset used in this tutorial. You can find out more about their work [here](https://archive.ics.uci.edu/ml/index.php).
+
+
+# References
+The `gtsummary` package is great at merging outcomes from regression models into publication quality tables. Daniel D. Sjoberg authored the `gtsummary` package with instructions on his [website](https://www.danieldsjoberg.com/gtsummary/reference/tbl_merge.html). You can also use external functions by converting the `gtsummary` table into an object using `as_gt()`; instructions can be found [here](https://education.rstudio.com/blog/2020/07/gtsummary/).
+
+I used [DAGitty](http://www.dagitty.net/) to create the DAG diagrams. 
+
+The `sandwich` [package](https://cran.r-project.org/web/packages/sandwich/sandwich.pdf) was used to estimate the Huber-White sandwich standard errors. 
+
+Bruno Rodrigues has a wonderful article on dealing with heteroskedasticity, which is located [here](https://www.brodrigues.co/blog/2018-07-08-rob_stderr/).
+
+Czar Yobero wrote a great article on how to test for heteroskedasticity, which is located on [his RPubs page](https://rpubs.com/cyobero/187387). 
+
+# Work in progress
+This is a work in progress. I will continue to make updates to this over time. If you have any comments or suggestions for improvements, please email internal.validity.blog@gmail.com
+
