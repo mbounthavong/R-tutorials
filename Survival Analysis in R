@@ -1,0 +1,287 @@
+---
+title: "Survival Analysis in R"
+author: "Mark Bounthavong"
+date: "2/7/2022"
+output:   
+    tufte::tufte_html: default
+---
+<style type="text/css">
+.math {
+  font-size: 12pt;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library("tufte")
+library("survival")
+library("dplyr")
+library("psych")
+library("survminer")
+library("survival")
+library("gmodels")
+
+```
+
+
+```{marginfigure}
+This tutorial is located on [RPubs](https://rpubs.com/mbounthavong/survival_analysis_in_r).
+```
+
+```{marginfigure}
+The entire R Markdown code is located on my [GitHub page](https://github.com/mbounthavong/R_epitools/blob/main/r_epitools_markdown)
+```
+
+## Introduction
+A dichotomous variable has two outcomes (Yes or No, Survives or Dies, Cured or Uncured) and is coded a 0 for $No$ ad 1 for $Yes$. We can compare the differences in the probability or risk of having the event (outcome = 1) between two groups using a relative risk ration or odds ratio. This give us information about the size of the effect, the direct of the effect, and the uncertainty surrounding the effect (e.g., 95% confidence interval). However, we do not have information on how long they were alive or at risk, which is critical information from a survival point of view. Hence, a different kind of analysis was needed to handle this issue--survival analysis.
+
+Survival analysis is also known as time-to-event analysis. This is a special type of analysis that takes into consideration when the event occurred rather than if the event occurred. Hence, survival is time-dependent. 
+
+In survival analysis, we are interested in the hazard, which is the instantaneous event (e.g., death) rate at a particular time $t$.
+
+By combining these two elements (survival and hazard), we will be able to estimate the hazard rate of an event occurring between two groups. 
+
+## Survivor and Hazard functions
+In survival analysis, the two main critical elements are the survivor and hazard functions.
+
+```{marginfigure}
+Survivor function $S(t)$ is a probability and hazard function $h(t)$ is a rate. 
+```
+
+The survivor function is described as:
+
+<div align="left">$\large S(t) = Pr(T > t),$</div>
+
+where $S(t)$ is the survival probability, $0 \le S(t) \le 1$, and $Pr(T > t)$ is the probability that the time of the event ($T$) is greater than the some time $t$.
+
+Hazard function $h(t)$ is the instantaneous potential per unit time for the event to occur, given that the subject is alive (rate)
+
+$\large h(t) = \lim_{\Delta t \to 0} \frac{P(t \le T \le t + \Delta t | T \ge t)}{\Delta t}$,
+
+where the hazard rate at some instantaneous point in time $\lim_{\Delta t \to 0}$ is the probability of the event occurring ($P(t \le T \le t + \Delta t )$) conditioned on the subject being alive ($T \ge t$ divided by per unit time. 
+
+The survivor and hazard functions are related by:
+
+$h(t) = \lambda$ if and only if $S(t) = \exp^{-\lambda t}$
+
+This means that you can derive the hazard function $h(t)$ from the survivor function $S(t)$ and vice versa. 
+
+
+## Kaplan-Meirer Curve
+When comparing the survival between two groups, it's good practice to plot out the survival curves. The Kaplan-Meier (KM) curve provides a non-parametric visualization of the survivor function. You can determine the survival probability at specific time points. The KM curve has a unique "step-like" appearance that represents when patients either experience the event (e.g., death) or are censored. 
+
+The data to plot a KM curve requires at minimum the subject identifier, survival time (time spent at risk), status (event), and group indicator. I generated these data to illustrate a basic KM curve dataset. There are 10 subjects in each group. If a subject died, they are coded as `event = 1`, but if they withdraw or lost to follow-up, they are censored `event = 0`. the `survivaltime` is the time the subjects are at risk or contributing to the survival time. 
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+kmplot <- read.csv("kmcurve.csv")
+
+knitr::kable(
+  (kmplot), caption = "Table 1. Variables for constructing KM curves"
+)
+```
+
+Let's take a look at a typical KM curve. The KM curve has a noticeable "step-like" plot that decreases (or increases) based on when the event of interest occurs at some specific time point. For example at `time = 0`, there are 10 subjects in each group. But at `time = 25`, only 3 subjects in Treatment 0 remaining and 5 subjects in Treatment 1 remaining at risk. At `time = 75`, there are 0 subjects in Treatment 0 remaining and 2 subjects in Treatment 1 remaining at risk. The hash marks on the KM curves indicate that a subject was censored, which means that they either were lost to follow-up or withdrew from the study. There are three hash marks in Treatment 1 and two hash marks in Treatment 2. 
+
+```{marginfigure}
+The Kaplan-Meier curve has a unique "step-like" plot that distinguishes it from other survival plots.
+```
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+kmplot <- read.csv("kmcurve.csv")
+
+km.plot <- survfit(Surv(survivaltime, event) ~ group, data = kmplot)
+
+ggsurvplot(km.plot,
+           risk.table = TRUE,
+           legend.labs = c("treatment 0", "treatment 1"),
+           title = "Kaplan-Meier curves")
+```
+
+## Log rank test
+The log rank test is used to compare the survival between groups. It is a test of significance, which means that it doesn't tell us anything about the size of the effect, its direction, nor uncertainty. However, it does let us know whether the survival between the groups are significantly different. 
+
+Statistical hypotheses for log rank test:
+
+* $H_{0}$: There is no difference between the populations in the probability of an event at any time point
+
+* $H_{a}$: There is a difference between the populations in the probability of an event at any time point
+
+```{marginfigure}
+The log rank test is based on the chi square test. It estimates the expected number of deaths at each time point and compares that to the observed number of deaths. The degrees of freedom is estimated as the number of groups minus 1 (n - 1). Fortunately, R can perform this statistical comparison using the `survdiff` function. 
+```
+
+If the p-value is < 0.05, we reject the null that there is no difference in survival between the populations. Otherwise, we fail to reject the null and the survival between the populations are the same (assuming our statistical threshold is $\alpha$ = 0.5).
+
+To perform the log rank test on our data, we need to use the `survdiff` function from the `survival` package. 
+
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+### log rank test 
+survdiff(Surv(survivaltime, event) ~ group, data = kmplot)
+```
+:::
+
+
+The log rank test yields a chi square statistical value because the underlying foundation is based on this framework. Like the chi square tests, the log rank estimates the expected number of subjects who died and compares that to the observed number of subjects who died. This yields a p-value = 0.07, which means that we fail to reject the null and the that the survival between Treatment 0 and Treatment 1 are statistically significantly different. 
+
+Since the log rank test is a test of significance, it doesn't give us information about the treatment effect size, direction, and uncertainty. For that, we will need to construct a Cox proportional hazard model.
+
+
+## Cox proportional hazards model
+Cox proportional hazard regression model is a type of survival regression. It assumes that the hazards between two groups are proportional (proportional hazards regression). This means that the effects of the predictor variables upon the outcome (survival) are constant over time and are additive on a linear scale. For example, if something doubles the risk of an end point at time = 1, it will also double the risk at time = 2, time = 3, etc. One way to determine if the proportional hazards assumption is violated is to look and see if the KM curves cross at multiple points. It's not a great way to do this, but it's an easy visual. 
+
+The Cox proportional hazard model does not have a constant term; rather, it has a constant hazard $h_{0}(t)$.
+
+The hazard rate can be described as:
+
+$\large h(t, X) = h_{0}(t) e^{\sum_{i=1}^{p} \beta_{i} X_{i}}$
+
+The hazard ratio is the exponential of the two hazards for the groups and can be described as:
+
+$\large HR = \frac{h(t, X^{*})}{h(t, X)} = \frac{h_{0}(t) e^{\sum_{i=1}^{p} \beta_{i} X_{i}^{*}}}{h_{0}(t) e^{\sum_{i=1}^{p} \beta_{i} X_{i}}}$
+
+$\large HR = e^{\sum_{i=1}^{p} \beta_{i} (X_{i}^{*} - X_{i})}$
+
+We can estimate the Cox proportional hazard model using the `coxph` function from the `survival` package. We can rewrite our $HR$ formula to reflect the main predictor of interest, which is group (Treatment 1 versus Treatment 2):
+
+```{marginfigure}
+We are interested in the $\beta_{1}$ coefficient.
+```
+$\large HR = e^{\beta_{1} [(Group = 1) - (Group = 0)]}$
+
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+coxmodel <- coxph(Surv(survivaltime, event) ~ group, data = kmplot)
+coxmodel  ## Generates the log hazard ratio
+```
+:::
+
+We have to exponentiate the log hazards ratio to get the hazards ratio. We also use the `confint` function to generate the 95% confidence interval for the hazards ratio. 
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+exp(coef(coxmodel)) ## Generates exp coefficients (or hazard ratio)
+
+exp(confint(coxmodel))
+```
+:::
+
+We are interested in the `group` coefficient, which is the log hazards ratio. When we exponentiate this, we get the hazards ratio, which is 0.35. The 95% confidence interval is 0.11, 1.15. 
+
+We conclude that the hazard of having the event is 65% lower among subjects in Treatment 1 compared to Treatment 0 with a 95% confidence interval of 0.11, 1.15. This result is not statistically significant since the 95% confidence interval cross the null or $HR = 1$. 
+
+
+## Movitvating example - Veteran Lung Cancer Study
+We can apply what we've learned using data from the Veterans Lung Cancer Study. 
+
+```{marginfigure}
+The Veteran Lung Cancer Study is part of the `survival` package. You can load it by assigning it to an object. For instance, `veteran.data <- veteran`. Once done, you can use `veteran.data` for your analyses.
+```
+## Data
+We will use the Veteran's Administration Lung Cancer Trial from [Prentice, RL. Exponential survivals with censoring and explanatory variables. Biometrika. 1973;60:279–88.](https://www.jstor.org/stable/2334539) In this study, 137 patients with advanced, inoperable lung cancer were randomized into two groups: chemotherapy + new drug treatment (experimental group) and chemotherapy (control treatment).
+
+The variables in the veteran dataset:
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+variables <- read.csv("variables.csv")
+
+knitr::kable(
+    (variables), caption = "Table 2. Variables in the Veterans Affairs Lung Cancer Trial"
+)
+```
+
+Let's take a look at the first six rows of the data. 
+
+```{r, warning= FALSE, message = FALSE}
+veteran.data <- veteran
+
+knitr::kable(
+    head(veteran.data), caption = "Table 3. First six rows of the Veterans Affairs Lung Cancer Trial"
+)
+```
+
+
+We can look at some summary statistics of the veterans datasets. There are 137 subjects in the study. The average survival time is 121.63 days and the average age of the sample is 58.3 years. The other variables are discrete, so the means do not provide a good description of them. We will need to use the `CrossTable` command, which is part of the `gmodels` package. 
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+knitr::kable(
+  describeBy(veteran.data) %>% round(2)
+)
+```
+:::
+
+```{r, warning = FALSE, message = FALSE}
+CrossTable(veteran.data$celltype)
+```
+
+Using the `CrossTable` function, we report that there were 35 (25.5%) subjects with squamous lung cancer, 48 (35.0%) with small cell lung cancer, 27 (19.7%) with adenocarcinoma, and 27 (19.7%) with large cell lung cancer. 
+
+## Kaplan-Meier Curve & log rank test - Veterans Study
+You can plot the Kaplan-Meier (KM) curves for the two groups and estimate the log rank test. 
+
+```{marginfigure}
+In the basic KM curve plot, notice how there are no hash marks for the censored data. The basic `plot` function will not include this, unfortunately. However, the `ggsurvplot` has that ability along with other options to improve your KM curves. 
+```
+
+We first use the basic `plot` function to visual the KM curve without any of the color or 95% confidence interval. 
+
+
+```{r, warning = FALSE, message = FALSE}
+kmcurve <- survfit(Surv(time, status) ~ trt, data = veteran.data)
+plot(kmcurve)
+```
+
+We can also install the `survminer` package to use the `ggsurvplot` function to plot the KM curves with additional features such as the 95% confidence interval (CI), log-rank test, and risk tables. We can estimate the log rank test by including the option `pval = TRUE` into the `ggsurvplot` function. But we can also estimate the log rank test separately using the `survdiff` function. 
+
+```{r, warning = FALSE, message = FALSE, out.width = "100%"}
+ggsurvplot(kmcurve, 
+           conf.int = TRUE,
+           pval = TRUE,
+           risk.table = TRUE,
+           legend.labs = c("treatment 1", "treatment 2"),
+           title = "Kaplan-Meier curves")
+```
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+survdiff(Surv(time, status) ~ trt, data = veteran.data)
+```
+:::
+
+Both the `ggsurvplot` and `survdiff` yield the same p-value for the log rank test, which is 0.93. Therefore, we fail to reject the null that there is no statistically significant difference in survival between Treatment 1 and Treatment 2. 
+
+
+## Cox proportional hazard model - Veterans study
+We can estimate the hazard ratio between Treatment 1 and Treatment 2 using the Cox proportional hazards model. 
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+coxmodel2 <- coxph(Surv(time, status) ~ trt, data = veteran.data)
+
+exp(coef(coxmodel2))
+
+exp(confint(coxmodel2))
+```
+:::
+
+The hazards ratio was 1.02 with a 95% confidence interval of 0.71, 1.45. Since the 95% confidence interval crosses where the $HR = 1$, we fail to reject the null hypothesis that there is no significant differences in hazards between subjects in Treatment 1 and Treatment 2. 
+
+
+## Conclusions
+Survival analysis takes into account the amount of time that the subjects are at risk; this is known as survival time. Even though subjects do not experience the event during the study period, they can be censored because they may experience the event at a late date. Kaplan-Meier curves provide a convenient non-parametric visual of the survival probability across time, and the log rank test allows us to tests whether the survival curves are different between groups. However, the log rank test does not provide information about the size of the effect, its direction, nor its uncertainty. The Cox proportional hazards model provides us with the hazards ratio and 95% confidence interval, which describes the relative hazards between two groups. 
+
+## References
+Kaplan EL, Meier P. Nonparametric estimation from incomplete observations. Journal of the American Statistical Association. 1958; 53:457–81.[link](https://www.jstor.org/stable/2281868)
+
+Bland JM, Altman DG. The logrank test. BMJ. 2004;328(7447):1073.[link](https://pubmed.ncbi.nlm.nih.gov/15117797/)
+
+## Work in progress
+These tutorials are a work in progress, so they may contain errors. I highly recommend you seek out statistical consult if you plan on running any analysis meant for publication. Any comments and suggestions can be sent to: internal.validity.blog@gmail.com
+
+
+
+
