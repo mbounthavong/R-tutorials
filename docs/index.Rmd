@@ -1,0 +1,107 @@
+---
+title: "Sample Size estimation using the odds ratio in a case-control study"
+author: "Mark Bounthavong"
+date: '2022-06-30'
+output:
+  tufte::tufte_html: default
+---
+<style type="text/css">
+.math {
+  font-size: 12pt;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library("tufte")
+library("dplyr")
+library("epiR")
+```
+
+```{marginfigure}
+This tutorial is located on [RPubs](https://rpubs.com/mbounthavong/sample_size_case_control_design).
+
+The source code is available on my [GitHub site](https://github.com/mbounthavong/R-tutorials/blob/main/Sample%20size%20estimation%20for%20case-control%20trials).
+```
+
+## Background
+In a [previous tutorial](https://rpubs.com/mbounthavong/sample_size_power_analysis_R), we reviewed how to estimate sample sizes based on two proportions. By entering the two proportions and providing the statistical significance $\alpha$ and the power (1 - $\beta$), you could determine the number of subjects needed for a study. 
+
+In this short tutorial, we will learn how to estimate the sample size for a case-control trial based on the minimally detectable odds ratio. 
+
+
+```{marginfigure}
+You will need to load the 'epiR' package. 
+```
+
+
+## Motivating example
+Let's suppose we wanted to perform a case-control study. We want to make sure that the cases and controls are equal. In other words we want them to have a 1:1 allocation of subjects. In this example, we know that the baseline proportion of events in the control is about 20%. We can add the odds ratio to help us determine how many subjects we need to estimate a minimally detectable odds ratio of 0.5. We will use a two-sided $\alpha$ of 0.05 and a power of 80% to detect a minimally detectable odds ratio of 0.5 or greater. 
+
+To estimate the number of subjects neeed in each group, we'll use the R code below:
+
+```{r, echo = TRUE}
+
+epi.sscc(OR = 0.5, 
+         p1 = NA, 
+         p0 = 0.20, 
+         n = NA, 
+         power = 0.80, 
+         r = 1, 
+         phi.coef = 0, 
+         design = 1, 
+         sided.test = 2, 
+         nfractional = FALSE, 
+         conf.level = 0.95, 
+         method = "unmatched", 
+         fleiss = FALSE)
+```
+
+Based on this output, we will need 260 subjects in each group to detect a minimal odds ratio of 0.5 or greater based on a significance threshold of 0.05 with 80% power. 
+
+## What happens when you change the odds ratio?
+We can see how the sample size estimates for one of the groups will change if we change the odds ratio threshold. For example, let's see what happens when you change the odds ratio threshold from 0.1 to 0.9. 
+
+First, we will create a sequence of odd ratio values ranging from 0.1 to 0.90 in increments of 0.05 units. We'll call this sequence `or`. 
+
+```{r, echo = TRUE, warning = FALSE}
+#### Create a sequence of different OR from 0.1 to 0.90 in increments of 0.05
+or1 <- seq(0.1, 0.90, 0.05)
+```
+
+Then we will include this into the code above. Once we've added the sequence of values for the odds ratio into the `epi.sscc` function, we will need to create a dataframe in order for us to plot the relationship between the odds ratio and sample size. 
+```{r, echo = TRUE, warning = FALSE}
+#### Estimate the sample size. Assume a baseline rate of 20%, 80% power, and 1 to 1 ratio
+sample1 <- epi.sscc(OR = or1, p1 = NA, p0 = 0.20, n = NA, power = 0.80, r = 1, 
+                    phi.coef = 0, design = 1, sided.test = 2, nfractional = FALSE, 
+                    conf.level = 0.95, method = "unmatched", fleiss = FALSE)
+```
+
+We'll focus on the number of subjects needed for the case group. 
+
+```{r, echo = TRUE, warning = FALSE}
+#### Generate a dataframe
+samplechange <- data.frame(or1, sample = sample1$n.case)
+```
+
+After creating the dataframe, we can plot the odds ratio against the estimate sample size needed for the cases. 
+
+```{r, echo = TRUE, warning = FALSE}
+#### Plot dataframe
+plot(samplechange$or1, 
+     samplechange$sample,
+     type = "b",
+     xlab = "Odds ratio",
+     ylab = "Sample size for one group")
+```
+
+Notice how the sample size increase exponentially as the odds ratio approaches the null or 1. This means that you will need a lot of subjects to detect a small difference. 
+
+
+## Acknowledgements
+The [`epiR`](https://rdrr.io/cran/epiR/man/) package is a powerful tool for performing basic and advanced epidemiological analyses. The `epi.sscc` function is just one tool in the `epiR` package that is used to estimate power and sample sizes for a case-control trial. There are additional functions like this one that are very useful for epidemiological work. In the coming months, I plan on reviewing many of these commands. 
+
+
+## Work in progress
+This is a work in progress, and I may update this tutorial in the future. 
