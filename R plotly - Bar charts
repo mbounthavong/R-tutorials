@@ -1,0 +1,135 @@
+---
+title: "R Plotly - Bar charts"
+author: "Mark Bounthavong"
+date: "8/20/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+Bar charts are useful when illustrating count data. We can add additional dimensions such as time to show trends and groups to show the trends from two or more groups. Moreover, when using `R`, we can build interactive figures with `plotly`. In this tutorial, we will learn how to build bar charts using `plotly` in `R Markdown`. 
+
+## Libraries
+You need the following libraries:
+
+```{r, warning = FALSE, message = FALSE}
+library("plotly")
+library("tidyverse")
+```
+
+## Bar chart with two groups
+Example bar chart with two groups using `plotly`.
+
+### Data
+Let's manually add some data to use for our bar charts. 
+
+We will create a data frame with two groups (Group 1 and Group 2). The value of interest is the monthly number of encounters between January and July. 
+
+```{r, message = FALSE, warning = FALSE}
+Month <- c('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul')   ## This will be the x-axis
+Group1 <- c(16, 13, 21, 24, 25, 30, 31)                       ## Group 1 data
+Group2 <- c(5, 11, 22, 17, 11, 8, 5)                          ## Group 2 data
+data.bar <- data.frame(Month, Group1, Group1)
+```
+
+### `plotly` commands
+To create the interactive bar charts, we will start with the following command:
+
+```{r, message = FALSE, warning = FALSE}
+fig <- data.bar %>% plot_ly()
+```
+
+Then, we can add to this basic form. Let's include the data for Group 1 and Group 2. We can also define the colors of the bars and the outline. 
+
+I used [color-hex](https://www.color-hex.com/) to determine the hex codes for the colors I wanted. I settled for the following hex codes for Group 1 (`#c27ba0`) and Group 2 (`#741b47`). I used the following hex color code for the outline on the bars (`#4c1130`).
+
+```{r, message = FALSE, warning = FALSE}
+fig <- data.bar %>% plot_ly()
+fig <- fig %>% add_trace(x = ~ Month, y = ~ Group1, type = 'bar', name = "Group 1",
+                         text = Group1, textposition = 'auto',
+                         marker = list(color = '#c27ba0',
+                                       line = list(color = '#4c1130', width = 1.5)))
+fig <- fig %>% add_trace(x = ~ Month, y = ~ Group2, type = 'bar', name = "Group 2",
+                         text = Group2, textposition = 'auto',
+                         marker = list(color = '#741b47',
+                                       line = list(color = '#4c1130', width = 1.5)))
+```
+
+We can add the layout options to the bar chart. In the `layout` option, we can add the title of the figure, the titles of the axes, the grouping variable, and the ordering of the x-axis. 
+
+Note: If you don't specify the ordering of the x-axis, you will get a bar chart where the months will not be in chronological order. Instead, you'll get the months in alphabetical order (see below).
+
+```{r, message = FALSE, warning = FALSE}
+fig <- fig %>% layout(title = "Number of encounters by months",
+                      barmode = 'group',
+                      xaxis = list(title = "Months"), 
+                      yaxis = list(title = "Number of encounters"))
+fig
+```
+
+Notice how `Apr` appears first before `Feb`, and `Jan` appears third before `Jul`. This is not what we would like to see in our bar chart. to rectify this, we need to add another element to the `layout` option. 
+
+We can use `categoryorder` and `categoryarray` to establish the order of the x-axis that makes sense for our months variable. 
+
+```{r, message = FALSE, warning = FALSE}
+fig <- fig %>% layout(title = "Number of encounters by months",
+                      barmode = 'group',
+                      xaxis = list(title = "Months", 
+                                   categoryorder = "array",
+                                   categoryarray = c('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul')),  ## Order & label the x-axis
+                      yaxis = list(title = "Number of encounters"))
+
+fig
+```
+
+Now, we're nearly finish with our final bar chart using `plotly`. 
+
+We can modify the width of the chart adding the following option in the `R Markdown` snippet: `out.width = "100%"`
+
+`{r, message = FALSE, warning = FALSE, out.width = "100%"}`
+
+Putting this altogether, we can write our final code:
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE, out.width = "100%"}
+Month <- c('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul')   ## This will be the x-axis
+Group1 <- c(16, 13, 21, 24, 25, 30, 31)                       ## Group 1 data
+Group2 <- c(5, 11, 22, 17, 11, 8, 5)                          ## Group 2 data
+data.bar <- data.frame(Month, Group1, Group1)
+
+fig <- data.bar %>% plot_ly()
+fig <- fig %>% add_trace(x = ~ Month, y = ~ Group1, type = 'bar', name = "Group 1",
+                         text = Group1, textposition = 'auto',
+                         marker = list(color = '#c27ba0',
+                                       line = list(color = '#4c1130', width = 1.5)))
+fig <- fig %>% add_trace(x = ~ Month, y = ~ Group2, type = 'bar', name = "Group 2",
+                         text = Group2, textposition = 'auto',
+                         marker = list(color = '#741b47',
+                                       line = list(color = '#4c1130', width = 1.5)))
+fig <- fig %>% layout(title = "Number of encounters by months",
+                      barmode = 'group',
+                      xaxis = list(title = "Months", 
+                                   categoryorder = "array",
+                                   categoryarray = c('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul')),  ## Order & label the x-axis
+                      yaxis = list(title = "Number of encounters"))
+
+fig
+
+```
+
+Hovering over each bar will yield a floating window with the number of monthly encounters by group. This is a very handy feature of `plotly`, which you can add to your website or html reports. 
+
+I have written a tutorial on how you can host your `R Markdown` html file onto `GitHub`, which you can find in this [link](https://mbounthavong.com/blog/2022/7/30/hosting-a-r-markdown-html-file-on-a-github-page).
+
+
+## Aknowledgements
+I found several useful resources that helped me learn how to use `plotly` in `R`.
+
+[Stackoverflow](https://stackoverflow.com) has a ton of resources that were helpful. I found the following most useful when solving how to order the x-axis properly [link](https://stackoverflow.com/questions/40149556/ordering-in-r-plotly-barchart). 
+
+[The Miller Lab](https://www.themillerlab.io/post/plotly/) was very helpful in providing detailed instructions on how to use `plotly` in `R Markdown`. The additional perk from this site is a great tutorial on how to use `kable` for table generations in `R Markdown` projects. 
+
+
+Note: This is a work in progress; hence, updates will likely appear in the future. 
