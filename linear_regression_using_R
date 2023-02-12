@@ -1,7 +1,7 @@
 ---
 title: "R tutorial on linear regression model"
 author: "Mark Bounthavong"
-date: "01/25/2022"
+date: "01/28/2022; updated on 02/11/2023"
 output:   
     tufte::tufte_html: default
 ---
@@ -18,10 +18,17 @@ library("tufte")
 ```
 
 ```{marginfigure}
-We will Use the diabetes.csv data set, which you can download at this [location](https://raw.githubusercontent.com/mbounthavong/R-tutorials/main/diabetes.csv).
+This tutorial is located on [Rpubs](https://rpubs.com/mbounthavong/linear_regression_using_R).
+```
+```{marginfigure}
+The entire R Markdown code is located on my [GitHub page](https://github.com/mbounthavong/R-tutorials/blob/main/linear_regression_using_R).
 ```
 
 # Introduction
+
+```{marginfigure}
+We will Use the diabetes.csv data set, which you can download at this [location](https://raw.githubusercontent.com/mbounthavong/R-tutorials/main/diabetes.csv).
+```
 
 Linear regression models (also known as "Ordinary Least Squares" model) allow us to determine if changing the values on a variable is associated with the values of another variable. In other words, if I make a 1-unit change in $X$, how much does Y change? In fact, linear regression is similar to the algebraic equation for a simple line ($Y = mx + b$, where $m$ is the slope, $X$ is the parameter that is changing, and $b$ is the Y-intercept). In biostatistics, we use linear regression models to test the association between two or more variables where the outcome is a continuous data type. 
 
@@ -275,7 +282,7 @@ We see that there are 657 women who a history of pregnancy and 111 women with no
 A DAG diagram illustrating the relationship between Pregnancy History as a confounder on the Age to Glucose relationship can be drawn. 
 
 
-```{r, echo = FALSE, warning = FALSE, message = FALSE, out.width = "50%", fig.cap = "DAG diagram illustrating the causal relationship between Age and Glucose level and Pregnanchy History as a confounder."}
+```{r, echo = FALSE, warning = FALSE, message = FALSE, out.width = "50%", fig.cap = "DAG diagram illustrating the causal relationship between Age and Glucose level and Pregnancy History as a confounder."}
 knitr::include_graphics("C:\\Users\\mboun\\Dropbox\\Marks blog\\R - Linear regression model\\Figures\\Figure 2.jpg")
 ```
 
@@ -353,7 +360,7 @@ ggPredict(linear.model2, digits = 1, show.point = FALSE, se = TRUE, xpos = 0.5)
 You can derive the difference between the groups with a history of pregnancy and without a history of pregnancy by substracting 102 - 94.5, which is 7.5, the $\beta_{2}$ for `pregnancy.history`. 
 ```
 
-We can see that the group that had a history of pregnancy is lower than the group that did not have a history of pregnancy. This makes sense when you look at the `pregnancy.history` coefficient. It is -7.5, which means that a subject with a history of pregnancy is associated with a 7.5 decrease in Glucose level (95% CI: -13.80, -1.15) compared to a subject without a history of pregnancy controlling for age. Therefore, for all ranges of Age, the group with a history of pregnancy will have Glucose levels that are 7.5-unit lower than a group without a history of pregnancy. You can visualize this on the plot; the linear lines do not cross and remain constant across all ranges of Age. But there is a positive correlation betwteen Age and Glucose level. 
+We can see that the group that had a history of pregnancy is lower than the group that did not have a history of pregnancy. This makes sense when you look at the `pregnancy.history` coefficient. It is -7.5, which means that a subject with a history of pregnancy is associated with a 7.5 decrease in Glucose level (95% CI: -13.80, -1.15) compared to a subject without a history of pregnancy controlling for age. Therefore, for all ranges of Age, the group with a history of pregnancy will have Glucose levels that are 7.5 units lower than a group without a history of pregnancy. You can visualize this on the plot; the linear lines do not cross and remain constant across all ranges of Age. But there is a positive correlation between Age and Glucose level. 
 
 # Evaluate residual plots
 
