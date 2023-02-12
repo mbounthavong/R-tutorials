@@ -96,7 +96,7 @@ library("ggplot2")
 # install.packages("devtools")
 library("devtools")
 # install.packages("predict3d")
-## This has been removed from CRAN, so you need to use the following code to install predict3d:
+## Note: 02-11-2023: This has been removed from CRAN, so you need to use the following code to install predict3d:
 ## devtools::install_github("cardiomoon/predict3d") ## Make sure to have the devtools installed
 library("predict3d")
 # install.packages("psych")
