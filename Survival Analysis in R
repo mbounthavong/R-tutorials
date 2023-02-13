@@ -1,7 +1,7 @@
 ---
 title: "Survival Analysis in R"
 author: "Mark Bounthavong"
-date: "2/7/2022"
+date: "2/7/2022; updated: 02/13/2023"
 output:   
     tufte::tufte_html: default
 ---
@@ -19,8 +19,8 @@ library("survival")
 library("dplyr")
 library("psych")
 library("survminer")
-library("survival")
 library("gmodels")
+library("gtsummary")
 
 ```
 
@@ -30,20 +30,24 @@ This tutorial is located on [RPubs](https://rpubs.com/mbounthavong/survival_anal
 ```
 
 ```{marginfigure}
-The entire R Markdown code is located on my [GitHub page](https://github.com/mbounthavong/R_epitools/blob/main/r_epitools_markdown)
+The entire R Markdown code is located on my [GitHub page](https://github.com/mbounthavong/R-tutorials/blob/main/Survival%20Analysis%20in%20R)
+```
+
+```{marginfigure}
+For this tutorial, you will need the following packages: `survival`, `dplyr`, `psych`, `survminer`, `gmodels`, and `gtsummary`.
 ```
 
 ## Introduction
-A dichotomous variable has two outcomes (Yes or No, Survives or Dies, Cured or Uncured) and is coded a 0 for $No$ ad 1 for $Yes$. We can compare the differences in the probability or risk of having the event (outcome = 1) between two groups using a relative risk ration or odds ratio. This give us information about the size of the effect, the direct of the effect, and the uncertainty surrounding the effect (e.g., 95% confidence interval). However, we do not have information on how long they were alive or at risk, which is critical information from a survival point of view. Hence, a different kind of analysis was needed to handle this issue--survival analysis.
+A dichotomous variable has two outcomes (Yes or No, Survives or Dies, Cured or Uncured) and is coded a 0 for $No$ and 1 for $Yes$. We can compare the differences in the probability or risk of having the event (`outcome = 1`) between two groups using a relative risk ratio or odds ratio. This give us information about the size of the effect, the direction of the effect, and the uncertainty surrounding the effect (e.g., 95% confidence interval). However, we do not have information on how long they were alive or at risk, which is critical information from a survival point of view. Hence, a different kind of analysis was needed to handle this issue--survival analysis.
 
-Survival analysis is also known as time-to-event analysis. This is a special type of analysis that takes into consideration when the event occurred rather than if the event occurred. Hence, survival is time-dependent. 
+Survival analysis is also known as a time-to-event analysis. This is a special type of analysis that takes into consideration when the event occurred rather than if the event occurred. In other words, we are focused on acquiring the rate, which is the number of events per unit time. 
 
-In survival analysis, we are interested in the hazard, which is the instantaneous event (e.g., death) rate at a particular time $t$.
+In survival analysis, we are interested in the hazard, which is the instantaneous event (e.g., death) ro rate at a particular time $t$.
 
-By combining these two elements (survival and hazard), we will be able to estimate the hazard rate of an event occurring between two groups. 
+By combining these two elements (survival and hazard), we will be able to estimate the hazard ratio of an event occurring between two groups. 
 
 ## Survivor and Hazard functions
-In survival analysis, the two main critical elements are the survivor and hazard functions.
+In survival analysis, the two main features are the survivor and hazard functions.
 
 ```{marginfigure}
 Survivor function $S(t)$ is a probability and hazard function $h(t)$ is a rate. 
@@ -55,7 +59,7 @@ The survivor function is described as:
 
 where $S(t)$ is the survival probability, $0 \le S(t) \le 1$, and $Pr(T > t)$ is the probability that the time of the event ($T$) is greater than the some time $t$.
 
-Hazard function $h(t)$ is the instantaneous potential per unit time for the event to occur, given that the subject is alive (rate)
+Hazards function $h(t)$ is the instantaneous potential per unit time for the event to occur, given that the subject is alive (rate)
 
 $\large h(t) = \lim_{\Delta t \to 0} \frac{P(t \le T \le t + \Delta t | T \ge t)}{\Delta t}$,
 
@@ -73,7 +77,9 @@ When comparing the survival between two groups, it's good practice to plot out t
 
 The data to plot a KM curve requires at minimum the subject identifier, survival time (time spent at risk), status (event), and group indicator. I generated these data to illustrate a basic KM curve dataset. There are 10 subjects in each group. If a subject died, they are coded as `event = 1`, but if they withdraw or lost to follow-up, they are censored `event = 0`. the `survivaltime` is the time the subjects are at risk or contributing to the survival time. 
 
-```{r, echo = FALSE, warning = FALSE, message = FALSE}
+You can download the data used in this tutorial from my [GitHub site](https://github.com/mbounthavong/R-tutorials/tree/main/Data).
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
 kmplot <- read.csv("kmcurve.csv")
 
 knitr::kable(
@@ -87,7 +93,7 @@ Let's take a look at a typical KM curve. The KM curve has a noticeable "step-lik
 The Kaplan-Meier curve has a unique "step-like" plot that distinguishes it from other survival plots.
 ```
 
-```{r, echo = FALSE, warning = FALSE, message = FALSE}
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
 kmplot <- read.csv("kmcurve.csv")
 
 km.plot <- survfit(Surv(survivaltime, event) ~ group, data = kmplot)
@@ -99,7 +105,7 @@ ggsurvplot(km.plot,
 ```
 
 ## Log rank test
-The log rank test is used to compare the survival between groups. It is a test of significance, which means that it doesn't tell us anything about the size of the effect, its direction, nor uncertainty. However, it does let us know whether the survival between the groups are significantly different. 
+The log rank test is used to compare the survival between groups. It is a test of significance, which means that it doesn't tell us anything about the size of the effect, its direction, nor its uncertainty. However, it does let us know whether the survival between the groups are significantly different. 
 
 Statistical hypotheses for log rank test:
 
@@ -159,7 +165,7 @@ coxmodel  ## Generates the log hazard ratio
 ```
 :::
 
-We have to exponentiate the log hazards ratio to get the hazards ratio. We also use the `confint` function to generate the 95% confidence interval for the hazards ratio. 
+We have to exponentiate the log hazard ratio to get the hazard ratio. We also use the `confint` function to generate the 95% confidence interval for the hazard ratio. 
 
 :::{.fullwidth}
 ```{r, warning = FALSE, message = FALSE}
@@ -169,7 +175,7 @@ exp(confint(coxmodel))
 ```
 :::
 
-We are interested in the `group` coefficient, which is the log hazards ratio. When we exponentiate this, we get the hazards ratio, which is 0.35. The 95% confidence interval is 0.11, 1.15. 
+We are interested in the `group` coefficient, which is the log hazard ratio. When we exponentiate this, we get the hazard ratio, which is 0.35. The 95% confidence interval is 0.11, 1.15. 
 
 We conclude that the hazard of having the event is 65% lower among subjects in Treatment 1 compared to Treatment 0 with a 95% confidence interval of 0.11, 1.15. This result is not statistically significant since the 95% confidence interval cross the null or $HR = 1$. 
 
@@ -180,12 +186,14 @@ We can apply what we've learned using data from the Veterans Lung Cancer Study.
 ```{marginfigure}
 The Veteran Lung Cancer Study is part of the `survival` package. You can load it by assigning it to an object. For instance, `veteran.data <- veteran`. Once done, you can use `veteran.data` for your analyses.
 ```
+
 ## Data
-We will use the Veteran's Administration Lung Cancer Trial from [Prentice, RL. Exponential survivals with censoring and explanatory variables. Biometrika. 1973;60:279–88.](https://www.jstor.org/stable/2334539) In this study, 137 patients with advanced, inoperable lung cancer were randomized into two groups: chemotherapy + new drug treatment (experimental group) and chemotherapy (control treatment).
+We will use the Veterans Administration Lung Cancer Trial from [Prentice, RL. Exponential survivals with censoring and explanatory variables. Biometrika. 1973;60:279???88.](https://www.jstor.org/stable/2334539) In this study, 137 patients with advanced, inoperable lung cancer were randomized into two groups: chemotherapy + new drug treatment (experimental group) and chemotherapy (control treatment). You can download the data for the variable list from my [GitHub site](https://github.com/mbounthavong/R-tutorials/tree/main/Data).
 
 The variables in the veteran dataset:
 
-```{r, echo = FALSE, warning = FALSE, message = FALSE}
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+### Load the "variables.csv" data from my GitHub site; this is a list of variables in the "veteran" dataset
 variables <- read.csv("variables.csv")
 
 knitr::kable(
@@ -196,6 +204,7 @@ knitr::kable(
 Let's take a look at the first six rows of the data. 
 
 ```{r, warning= FALSE, message = FALSE}
+### Load "veteran" data from the "survival" package
 veteran.data <- veteran
 
 knitr::kable(
@@ -219,6 +228,23 @@ CrossTable(veteran.data$celltype)
 ```
 
 Using the `CrossTable` function, we report that there were 35 (25.5%) subjects with squamous lung cancer, 48 (35.0%) with small cell lung cancer, 27 (19.7%) with adenocarcinoma, and 27 (19.7%) with large cell lung cancer. 
+
+We can create a demographics table using the `gtsummary` package and the `tbl_summary` function. 
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+veteran.data %>%
+    select(trt, celltype, time, status, karno, diagtime, age, prior) %>%
+    tbl_summary(by = trt, 
+                missing = "no") %>%
+    add_p(pvalue_fun = ~style_pvalue(.x, digits = 2)) %>% 
+    add_overall() %>%
+    modify_header(label = "**Variable**") %>% 
+    bold_labels() %>%
+    modify_caption("**Table 4. Patient characteristics from the Veterans Lung Cancer Trial**") %>%
+    modify_spanning_header(c("stat_1", "stat_2") ~ "**Treatment Received**")
+```
+:::
 
 ## Kaplan-Meier Curve & log rank test - Veterans Study
 You can plot the Kaplan-Meier (KM) curves for the two groups and estimate the log rank test. 
@@ -258,7 +284,9 @@ Both the `ggsurvplot` and `survdiff` yield the same p-value for the log rank tes
 ## Cox proportional hazard model - Veterans study
 We can estimate the hazard ratio between Treatment 1 and Treatment 2 using the Cox proportional hazards model. 
 
-:::{.fullwidth}
+$\large HR = e^{\beta_{1}(Treatment)}$
+
+
 ```{r, warning = FALSE, message = FALSE}
 coxmodel2 <- coxph(Surv(time, status) ~ trt, data = veteran.data)
 
@@ -266,18 +294,89 @@ exp(coef(coxmodel2))
 
 exp(confint(coxmodel2))
 ```
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+### Create nice regression output
+model1 <- tbl_regression(coxmodel2, intercept = TRUE)
+as_gt(model1) %>% 
+              gt::tab_header("Cox proportional hazards regression model") %>% 
+              gt::tab_options(table.align='left')
+```
 :::
 
-The hazards ratio was 1.02 with a 95% confidence interval of 0.71, 1.45. Since the 95% confidence interval crosses where the $HR = 1$, we fail to reject the null hypothesis that there is no significant differences in hazards between subjects in Treatment 1 and Treatment 2. 
 
+```{marginfigure}
+The Cox proportional hazards model yields log hazard ratio. To get the hazard ratio, exponentiate the log hazard ratio.
+```
+
+
+The hazard ratio was 1.02 with a 95% confidence interval of 0.71, 1.45. Since the 95% confidence interval crosses where the $HR = 1$, we fail to reject the null hypothesis that there is no significant differences in hazards between subjects in Treatment 1 and Treatment 2. 
+
+We can control for confounders such as the age, prior history, cell type, diagnosis time, and Karnofsky score.
+
+$\large HR = e^{\beta_{1}(Treatment) + \beta_{2}(age) + \beta_{3}(prior) + \beta_{4}(celltype) + \beta_{5}(diagtime) + \beta_{6}(karno)}$
+
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+coxmodel3 <- coxph(Surv(time, status) ~ trt + celltype + age + prior + diagtime + karno, data = veteran.data)
+
+exp(coef(coxmodel3))
+
+exp(confint(coxmodel3))
+```
+:::
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+### Create nice regression output
+model2 <- tbl_regression(coxmodel3, intercept = TRUE)
+as_gt(model2) %>% 
+              gt::tab_header("Cox proportional hazards regression model with confounders") %>% 
+              gt::tab_options(table.align='left')
+```
+:::
+
+In the adjusted Cox proportional hazards model, subjects in Treatment 2 had a 1.34 higher hazard of the event compared to subjects in Treatment 1; the 95% confidence interval is between 0.89 and 2.02. This is not statistically significant becacause the 95% confidence interval includes the null or $HR = 1$. 
+
+We can check to see if the adjustment model reduced confounding by estimating the magnitude of confounding. This is a rule of thumb: if the magnitude of confounding is greater than 10%, we should present the adjusted $HR$.
+
+magnitude of confounding = $\large \frac{HR_{crude} - HR_{adjusted}}{HR_{adjusted}}$
+
+```{r, warning = FALSE, message = FALSE}
+confounding <- (1.017901 - 1.3425930) / 1.3425930
+confounding
+```
+
+Since the magnitude of confounding is 24% and greater than 10%, we should present the adjusted $HR$. 
+
+We can also compare the models side by side. 
+
+:::{.fullwidth}
+```{r, warning = FALSE, message = FALSE}
+#### Merge the two Cox regression modelss outputs
+table1 <- tbl_merge(tbls = list(model1, model2),
+          tab_spanner = c("**Model 1**", "**Model 2**"))
+as_gt(table1) %>% 
+              gt::tab_header("Comparison between models [Model 1 (crude) v. Model 2 (adjusted)]") %>% 
+              gt::tab_options(table.align = 'left')
+```
+:::
 
 ## Conclusions
-Survival analysis takes into account the amount of time that the subjects are at risk; this is known as survival time. Even though subjects do not experience the event during the study period, they can be censored because they may experience the event at a late date. Kaplan-Meier curves provide a convenient non-parametric visual of the survival probability across time, and the log rank test allows us to tests whether the survival curves are different between groups. However, the log rank test does not provide information about the size of the effect, its direction, nor its uncertainty. The Cox proportional hazards model provides us with the hazards ratio and 95% confidence interval, which describes the relative hazards between two groups. 
+Survival analysis takes into account the amount of time that the subjects are at risk; this is known as survival time. Even though subjects do not experience the event during the study period, they can be censored because they may experience the event at a late date. Kaplan-Meier curves provide a convenient non-parametric visual of the survival probability across time, and the log rank test allows us to tests whether the survival curves are different between groups. However, the log rank test does not provide information about the size of the effect, its direction, nor its uncertainty. The Cox proportional hazards model provides us with the hazard ratio and 95% confidence interval, which describes the relative hazards between two groups. 
 
 ## References
-Kaplan EL, Meier P. Nonparametric estimation from incomplete observations. Journal of the American Statistical Association. 1958; 53:457–81.[link](https://www.jstor.org/stable/2281868)
+Kaplan EL, Meier P. Nonparametric estimation from incomplete observations. Journal of the American Statistical Association. 1958; 53:457???81.[link](https://www.jstor.org/stable/2281868)
 
 Bland JM, Altman DG. The logrank test. BMJ. 2004;328(7447):1073.[link](https://pubmed.ncbi.nlm.nih.gov/15117797/)
+
+The `gtsummary` package creates nice tables for demographic summaries. The `gtsummary` package was developed by [Daniel D. Sjoberg](https://www.danieldsjoberg.com/gtsummary/).
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+citation("gtsummary")
+```
 
 ## Work in progress
 These tutorials are a work in progress, so they may contain errors. I highly recommend you seek out statistical consult if you plan on running any analysis meant for publication. Any comments and suggestions can be sent to: internal.validity.blog@gmail.com
