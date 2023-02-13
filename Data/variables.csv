@@ -1,0 +1,9 @@
+variable,description
+trt,"treatment assignment (1 = control, 2 = experimental)"
+celltype,"lung cancer cell type (1 = squamous, 2 = smallcell, 3 = adeno, 4 = large)"
+time,survival time in days
+status,"censoring status (1 = death occurred, 0 = censored)"
+karno,Karnofsky performance score (100 = good)
+diagtime,months from diagnosis to randomization
+age,in years
+prior,"prior therapy (0 = no, 10 = yes)"
