@@ -1,0 +1,214 @@
+---
+title: "Interpreting Regression Models"
+author: "Mark Bounthavong"
+date: "2023-02-27"
+output:
+  rmdformats::downcute:
+    self_contained: yes
+    thumbnails: no
+    lightbox: yes
+    gallery: no
+    highlight: tango
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Interpreting regression models
+In the last several weeks, you have been introduced to three types of regression models: linear, logistic, and survival. Each of these are used in specific scenarios. 
+
+* Linear regression models are used when you have a dependent variable that is a continuous data type (e.g., serum creatinine, hemoglobin A1c). 
+
+* Logistic regression models are used when you have a dependent variable that is a categorical data that is binary (e.g., Yes/No, Cure/No cure). 
+
+* Cox proportional hazards model are used when you have a dependent variable that is a time to an event (e.g., time to death). 
+
+When you read the literature, it is crucial that you understand what regression model is being used because it will help you determine the dependent variable and, in turn, identify the primary endpoint. 
+
+However, there are many ways to teach regression models to students. I will show you how I think of regression models in biomedical sciences. In the future, you may meet someone who will explain these same models differently. That’s okay. As long as you discover a method or approach that helps you understand regression models, it’s a win. 
+
+The hardest part about regression models is understanding why we use them. Technically, we use them because they provide us with a measure of association that is easy to quantify and interpret. For example, when we want to make a statement about a drug causing some outcome, we can construct a simple model:
+
+$$\begin{align}
+Y_i = \beta_0 + \beta_1 * D_i + \epsilon_i,
+\end{align}$$
+
+where $Y_i$ is the endpoint (or outcome) for the i-th subject, $β_0$ denotes the constant (or the baseline level of $Y$ when $D$ = 0), $β_1$ denotes the effect (e.g., slope) of $D_i$ of the i-th subject on endpoint $Y_i$, $D_i$ denotes the variable of interest (e.g., drug) of the i-th subject, and $\epsilon_i$ denotes the error term (or the amount of variation left over). (Note: We sometimes identify these terms based on where they are relative to the “ = ” sign. For example, the $Y_i$ term is called the “left-hand side” and the $β_0+β_1 D_i+\epsilon_i$ terms are called the “right-hand side” of the equation.)
+
+This equation tells us that we are studying the effects of $D$ -> $Y$.
+
+Using this equation, we can insert variables. Let’s suppose we are comparing the effects of Drug A versus Drug B on hemoglobin A1c levels (HbA1c). We can rewrite this equation as:
+
+$$\begin{align}
+HbA1c_i = \beta_0 + \beta_1 * Treatment_i + \epsilon_i
+\end{align}$$
+
+where $HbA1c_i$ denotes the HbA1c for the i-th subject, $Treatment_i$ denotes the treatment (e.g., Drug A or Drug B) for the i-th subject. The $Treatment_i$ variable is important because it tells use what drug the subject received. For example, a subject can receive either Drug A or Drug B. We call this the predictor of interest. 
+
+When we compare the effect of the treatment on the outcome, we can use the regression model equations:
+
+* For a subject that received Drug A: $HbA1c_i= β_0+β_1 [Treatment=Drug A]_i +\epsilon_i$,
+
+* For a subject that received Drug B: $HbA1c_i= β_0+β_1 [Treatment=Drug B]_i +\epsilon_i$,
+
+We can compare the effects of Drug A versus Drug B by combing the two equations:
+
+$$\begin{align}
+\frac{Hba1c_i = \beta_0 + \beta_1 * [Treatment = Drug A]_i + \epsilon_i}{HbA1c_i = \beta_0 + \beta_1 * [Treatment = Drug B]_i + \epsilon_i}
+\end{align}$$
+
+Notice that we can cancel and simplify the terms:
+
+```{r, echo = FALSE}
+knitr::include_graphics("Figure 1.png")
+```
+
+The new equation provides us with the difference in HbA1c between Drug A and Drug B. The $β_1$ denotes the magnitude and direction of the change. For example, the difference in HbA1c between subjects who received Drug A compared to subjects who received Drug B is $β_1$. 
+
+Another way to interpret this is: When we change the Treatment variable from Drug B to Drug A, the change in HbA1c is $β_1$.
+
+Let’s look at an example. Suppose we have data on the effect of supplement type on tooth growth. Subjects received one of two types of supplements (VC or OJ). The endpoint is the numeric length of their tooth. We will code VC = 1 and OJ = 0. Since tooth growth is a continuous data type, we can apply the linear regression model. 
+
+Let’s write the equation:
+
+$$\begin{align}
+Tooth growth_i = \beta_0 + \beta_1 * Supplement type_i + \epsilon_i
+\end{align}$$
+
+where $Tooth growth_i$ denotes the length of the tooth at the end of the study for the i-th subject, $Supplement type_i$ denotes the type of supplement the i-th subject received, and β_1 denotes the difference in the length of the tooth between subjects who received VC versus OJ. Another way to interpret $β_1$ is the change in tooth grown associated with a change in going from OJ to VC. (Note: Since OJ = 0, it is by default the reference group. Hence, interpretation of this comparison is made as VC relative to OJ.)
+
+When we run the linear regression mode, we get the following output:
+
+
+```{r, echo = FALSE}
+knitr::include_graphics("Figure 2.png")
+```
+
+We interpret the results using the beta coefficients. These are $β_0$ and $β_1$.
+
+$β_0=20.66$: This means that among subjects who received the baseline supplement feed (OJ), the length of the tooth is 20.66 units. This is also known as the constant or intercept. 
+
+$β_1=-3.70$: This means that among subjects who received VC had a lower tooth length (-3.70 units) compared to subjects that received OJ. Another way to interpret β_1 is: a change in supplement feed from OJ to VC is associated with a -3.70 units change in tooth length. 
+
+(Note: This example uses a linear regression model, so the interpretation of the beta coefficients is based on the units of the dependent variable. In this example, it’s the length of the tooth. However, with logistic regression models, the interpretation of the beta coefficient is different; it’s either based on the log odds or the odds ratio. Make sure you distinguish the differences between the beta coefficients of the linear regression model and the logistic regression model. The same goes for the beta coefficients of the Cox proportional hazards model.)
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+#### Here is the R code:
+#### Install the datasets package
+## install.packages("datasets")
+
+#### Load the datasets library
+library("datasets")
+
+#### Use the ToothGrowth dataset
+data1 <- ToothGrowth
+
+#### Run the linear regression model
+model1 <- glm(len ~ supp, family = gaussian, data = data1)
+
+#### View the summary results of the linear regression model
+summary(model1)
+
+#### View the 95% Confidence Intervals for the beta coefficients
+confint(model1)
+```
+
+## Multivariable regression models
+A term that you will see in the literature is “multivariable regression models.” This means that you are including more than one variable in the “right-hand side” of the equation. Why do we add more variables to the “right-hand side” of the equation? It’s because we are controlling (adjusting) for confounders. 
+
+Let’s look at the following directed acyclic graph (DAG):
+
+```{r, echo = FALSE}
+knitr::include_graphics("Figure 3.png")
+```
+
+The causal pathway ($D$ -> $Y$) is what we are interested in studying. However, there is a confounder ($C$) that can distort this pathway through the “backdoor” path. Since $C$ is associated with both the predictor of interest ($E$) and the endpoint (Y) (it’s also not in the causal pathway), we need to control or adjust for this either with the Mantel-Haenszel method or with a regression model. 
+
+The multivariable regression model incorporates the confounder into the “right-hand side” of the equation. Let’s see how this is done:
+
+$$\begin{align}
+Y_i = \beta_0 + \beta_1 * D_i + \beta_2 * C_i + \epsilon_i
+\end{align}$$
+
+where $C_i$ denotes the confounder and $β_2$ denotes the effect of the confounder on the outcome $Y_i$. There are now two variables in the “right-hand side” of the question; hence, we call this a multivariable regression model. Another way to interpret this model is as a regression model that explores the relationship between $D$ -> $Y$ controlling for $C$. 
+
+Let’s look at this mathematically:
+
+```{r, echo = FALSE}
+knitr::include_graphics("Figure 4.png")
+```
+
+The confounder $C_i$ is removed from the interpretation of $β_1$, which means that we can safely interpret the effect of $D = 1$ versus $D = 0$ on the outcome $Y_i$ controlling for $C_i$ in the i-th subject. 
+
+Let’s look at an example. We’ll use the same data where we examine the relationship between supplement diet and tooth length. We will add another variable called dose, which denotes the amount of multivitamins the subject consumes. We can write our regression equation as:
+
+$$\begin{align}
+Tooth growth_i = \beta_0 + \beta_1 * Supplement type_i + \beta_2 * Dose_i + \epsilon_i
+\end{align}$$
+
+where $Dose_i$ denotes the amount of multivitamin the i-th subject consumes, and $β_2$ denotes the association between a 1-unit increase in the dose of multivitamin and the length of the tooth. Alternative, $β_2$ is interpreted as the effect on tooth length due to a 1-unit increase in multivitamin dose. 
+
+Since the endpoint tooth growth is a continue data type, we run a linear regression model and get the following results:
+
+```{r, echo = FALSE}
+knitr::include_graphics("Figure 5.png")
+```
+
+We interpret the results using the beta coefficients. These are $β_0$, $β_1$, and $β_2$.
+
+$β_0=9.27$: This means that among subjects who received the baseline supplement feed (OJ) and consumed 0 units of multivitamin, the length of the tooth is 9.27 units. This is also known as the constant or intercept. 
+
+$β_1=-3.70$: This means that among subjects who received VC had a lower tooth length (-3.70 units) compared to subjects that received OJ and controlling for consumption of multivitamin dose. Another way to interpret $β_1$ is: a change in supplement feed from OJ to VC is associated with a -3.70 units change in tooth length controlling for consumption of multivitamin dose. 
+
+$β_2=9.76$: This means that among subjects who have a 1-unit increase in multivitamin dose, there is a corresponding increase in tooth length by 9.76 units controlling for supplement consumption (VA or OJ). In other words, a 1-unit increase in multivitamin dose is associated with an increase in tooth length by 9.76 units controlling for supplement type. 
+
+Notice the $β_2$ is also controlling for the effects of supplement consumption. 
+
+Let’s try to do additional interpretations of these results. Let’s suppose we want to compare a subject who received VC supplement and consumes 1 unit of multivitamin to a subject that received OJ supplement and consumes 1 unit of multivitamin. We can input the regression beta coefficients into the model:
+
+```{r, echo = FALSE}
+knitr::include_graphics("Figure 6.png")
+```
+
+Subject with VC and 1 unit of multivitamin:
+$15.33=9.27+(-3.70)[Supplement type_i=VC]+9.76[Dose_i=1]+e_i$,
+
+Subject with OJ and 1 unit of multivitamin:
+$19.03=9.27+(-3.70)[Supplement type_i=OJ]+9.76[Dose_i=1]+e_i$,
+
+The difference in tooth length between the two subjects is -3.70 units (15.33 – 19.03). (Note: VJ = 1 and OJ = 0. Hence, multiplying 1 * (-3.70) = -3.70, and multiplying 0 * (-3.70) = 0). The difference between VJ and OJ is -3.70 units.)
+
+Let’s compare another two subjects: Let’s compare tooth length among a subject who received VC and consumed 2 units of multivitamins to a subject that received OJ and consumed 2 units of multivitamins. 
+
+Subject with VC and 2 units of multivitamin:
+$25.09=9.27+(-3.70)[Supplement type_i=VC]+9.76[Dose_i=2]+e_i$,
+
+Subject with OJ and 2 units of multivitamin:
+$28.79=9.27+(-3.70)[Supplement type_i=OJ]+9.76[Dose_i=2]+e_i$,
+
+The difference in tooth length between the two subjects is -3.70 units (25.09 – 28.79). Notice how the difference between VJ and OJ remains -3.70 units despite the subjects consuming different amounts of multivitamins. This is the “adjustment” that occurs with regression models. 
+
+```{R, echo = TRUE, warning = FALSE, message = FALSE}
+#### R code for multivariable regression model example:
+#### Run the linear regression model (D -> Y + C)
+model2 <- glm(len ~ supp + dose, family = gaussian, data = data1)
+
+
+#### View the summary results of the linear regression model
+summary(model2)
+
+#### View the 95% Confidence Intervals for the beta coefficients
+
+confint(model2)
+```
+
+## Conclusions
+Regression models are powerful tools to evaluate the causal pathway between the predictor of interest and the endpoint, but it also can control (or adjust) for confounders. However, constructing regression models is an art, and one that requires the builder to have prior knowledge of the disease or scenario. Additional evidence using literature can be used to select variables to include in a regression model, but these need to be rationalized and defended. This is why I consider building regression models an art because there is some subjectivity in determining which variables to select for adjustments. You must be able to justify your selection of variables to control in the regression model, otherwise, it’s just a guess and subject to criticisms. 
+
+## Work in progress
+This is a work in progress, and I expect to make future edits. 
+
+
