@@ -18,7 +18,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Interpreting regression models
-In the last several weeks, you have been introduced to three types of regression models: linear, logistic, and survival. Each of these are used in specific scenarios. 
+In my course, we have introduce three types of regression models: linear, logistic, and survival. Each of these are used in specific scenarios. 
 
 * Linear regression models are used when you have a dependent variable that is a continuous data type (e.g., serum creatinine, hemoglobin A1c). 
 
