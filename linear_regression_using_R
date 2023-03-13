@@ -1,7 +1,7 @@
 ---
 title: "R tutorial on linear regression model"
 author: "Mark Bounthavong"
-date: "01/28/2022; updated on 02/11/2023"
+date: "01/28/2022; updated on 03/13/2023"
 output:   
     tufte::tufte_html: default
 ---
@@ -47,7 +47,7 @@ There are several conditions that need to be satisfied in order for us to use th
 * Residuals are not correlated with the $X$ variables (homoscedasticity)
 * Association between $X$ and $Y$ is linear
 
-However, the linear regression model is pretty robust to violations of these assumptions; hence, it’s popularity. Moreover, it is very easy to interpret as this article will demonstrate. 
+However, the linear regression model is pretty robust to violations of these assumptions; hence, its popularity. Moreover, it is very easy to interpret as this article will demonstrate. 
 
 
 # Simple linear regression
@@ -165,7 +165,7 @@ I used DAGitty to generate the DAG diagram. DAGitty can be found [here](http://w
 ```
 
 ```{r, echo= FALSE, warning = FALSE, message = FALSE, out.width = "50%", fig.cap = "DAG diagram illustrating the causal relationship between Age and Glucose level."}
-knitr::include_graphics("C:\\Users\\mboun\\Dropbox\\Marks blog\\R - Linear regression model\\Figures\\Figure 2_0.jpg")
+knitr::include_graphics("C:\\Users\\mbounthavong\\Dropbox\\Marks blog\\R - Linear regression model\\Figures\\Figure 2_0.jpg")
 ```
 
 ## Visualize the association between Age and Glucose level
@@ -287,7 +287,7 @@ A DAG diagram illustrating the relationship between Pregnancy History as a confo
 
 
 ```{r, echo = FALSE, warning = FALSE, message = FALSE, out.width = "50%", fig.cap = "DAG diagram illustrating the causal relationship between Age and Glucose level and Pregnancy History as a confounder."}
-knitr::include_graphics("C:\\Users\\mboun\\Dropbox\\Marks blog\\R - Linear regression model\\Figures\\Figure 2.jpg")
+knitr::include_graphics("C:\\Users\\mbounthavong\\Dropbox\\Marks blog\\R - Linear regression model\\Figures\\Figure 2.jpg")
 ```
 
 
@@ -380,7 +380,7 @@ Recall the assumptions for the linear regression model:
 * Association between $X$ and $Y$ is linear
 
 ```{r fig-margin, fig.margin = TRUE, echo = FALSE, fig.cap = "Homoscedasticity v. Heteroscedasticity."}
-knitr::include_graphics("C:\\Users\\mboun\\Dropbox\\Marks blog\\R - Linear regression model\\Figures\\Figure 1.jpg")
+knitr::include_graphics("C:\\Users\\mbounthavong\\Dropbox\\Marks blog\\R - Linear regression model\\Figures\\Figure 1.jpg")
 ```
 
 We can test to see if the residuals are uncorrelated to with the $X$ variables (homoscedasticity). 
@@ -441,7 +441,7 @@ Notice that the standard errors are slightly difference from the ones estimated 
 
 :::{.fullwidth}
 ```{r, echo = FALSE, warning = FALSE, message = FALSE, out.width = "150%"}
-knitr::include_graphics("C:\\Users\\mboun\\Dropbox\\Marks blog\\R - Linear regression model\\Figures\\Figure 3.jpg")
+knitr::include_graphics("C:\\Users\\mbounthavong\\Dropbox\\Marks blog\\R - Linear regression model\\Figures\\Figure 3.jpg")
 ```
 :::
 
