@@ -1,0 +1,124 @@
+---
+title: "Exact matching using R - `MatchIt` package"
+author: "Mark Bounthavong"
+date: "30 September 2023"
+output:
+  rmdformats::downcute:
+    self_contained: true
+    default_style: "light"
+    downcute_theme: "default"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+Recently, I was asked to help create a matching algorithm for a retrospective cohort study. The request was to perform an exact match on a single variable using a 2 to 1 ratio (unexposed to exposed). Normally, I would use a propensity score match (PSM) approach, but the data did not have enough variables for each unique subject. With PSM, I tend to build a logit (or probit) model using variables that would be theoretically associated with the treatment assignment. However, this approach requires enough observable variables to construct these PSM models. For this request, there were a few variables for each subjects; the only variable available were the unique identifier, site, and a continuous variable. 
+
+Fortunately, R has a package called `MatchIt` that makes it possible to perform an exact match on a single variable. In this tutorial, I'll review how to perform an exact match using the `MatchIt` package on a dataset with few variables. 
+
+## Create a dataframe
+For this tutorial, let's create a dataframe with several variables for 30 hypothetical subjects. This dataframe will contain the following variables: `patientid`, `treatment`, `site`, and `age`. The `patientid` is the unique identifier for the subject. The `treatment` variable is the binary assignment (0 = No, 1 = Yes). The `site` variable is the categorical variable that categorizes the subject to one of five sites (1, 2, 3, 4, 5). The `age` variable is the age in years for the subject upon study entry. 
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+## Create data [We will create a hypothetical dataframe with three variables]
+
+## Variables: patientid, treatment, and site
+
+data1 <- data.frame(
+  patientid = c(1:30),                           ## N = 30 unique id
+
+  treatment = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0,    ## treatment is 0 and 1
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+
+  site = c(1, 1, 2, 2, 3, 3, 4, 4, 5, 5,         ## sites = 1, 2, 3, 4, 5
+           1, 2, 3, 4, 5, 1, 2, 3, 4, 5,
+           1, 2, 3, 4, 5, 1, 2, 3, 4, 5),
+
+  age = c(23, 24, 45, 34, 22, 34, 44, 55, 66, 31,
+          66, 87, 23, 56, 45, 22, 67, 45, 76, 34,
+          23, 45, 68, 59, 74, 55, 38, 21, 34, 44)
+  )
+
+data1
+```
+
+## Randomize the dataframe
+Once you have the dataframe created, let's randomize the order of the subjects. This process may not be necessary, but if we use a nearest neighbor approach, then this will add a little randomize to the chaos.
+
+We set a seed using `set.seed` so that we can reproduce this randomized order. 
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+## Randomize the data frame
+set.seed(455793)
+data_random = data1[sample(1:nrow(data1), replace = FALSE), ]
+data_random
+```
+
+## `MatchIt` package
+We'll need to install and load the `MatchIt` package. 
+
+Note: Once you install the `MatchIt` package the first time, you don't need to re-install each time you initiate a new R session. But you will need to load it using the library command. 
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+## Load libraries
+## Step 1: Install the packages using the following code:
+##         install.packages("MatchIt")
+## Step 2: Once it's installed, load the library:
+library("MatchIt")
+```
+
+## Perform the exact match
+To perform the exact match, we'll need to use the `matchit` function. For this example, we'll perform an exact match on the `site` variable, but we'll also include `age` as another matching condition. Since `age` is a continuous data, it will be difficult to perform an exact match, so we'll use another approach called the nearest neighbor approach. 
+
+In Step 1, we need to perform the exact match on the `site` variable while using the nearest neighbor approach for the `age` variable. 
+
+We'll use the `as.factor` function to let R know that the `treatment` variable is a factor variable. We'll use the 
+
+There are several options that will be necessary: `data`, `match`, `distance`, `exact`, and `ratio`. 
+
+The `data` option assigns the dataframe. 
+
+The `exact` option tells R that we want to perform an exact match on the `site` variable.
+
+The `method` option tells R that we are using the nearest neighbor approach. 
+
+We will create an object called `m.out` that contains the matching results. Then, we need to convert this to a dataframe for analysis (Step 2)
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+## Match on site
+## Step 1: Perform exact match in site and nearest neighbor with age
+##         with a 2:1 ratio (control to treatment)
+m.out <- matchit(as.factor(treatment) ~ site + age,
+                 data = data_random,
+                 exact = "site",
+                 method = "nearest",
+                 ratio = 2)
+summary(m.out)
+
+## Step 2: Convert to a dataframe for analysis
+data_match1 <- match.data(m.out)
+data_match1
+```
+
+The `subclass` column indicates the matching groups. For example a `subclass = 5` indicate that those subjects assigned a `subclass` value of `5` are matched 2 to 1 (unexposed to exposed). For our example, these are subjects 9, 20, and 25. 
+
+## Testing the matching
+We can see if the matching algorithm balanced the two groups with a t test. Since we have `age` as a continuous variable, we can check to see if `age` is balanced between the two groups. According to the t test, the average age of subjects in the unexposed group (`treatment = 0`) is 44.95 and the average age of subjects in the exposed group (`treatment = 1`) is 46.10; the p-value is 0.8742, which indicates that the difference in average ages between the two groups is not statistically significant at the 5% two-tailed alpha level. 
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+## Perform a t-test to compare the ages between the treatment and control groups
+t.test(data = data1, age ~ treatment, unequal = FALSE)
+```
+
+## Conclusions
+The `MatchIt` package allows us to perform exact matching on a single variable but it also allows flexibility to include other types of variables. There are a lot of other features of the `MatchIt` package that we will explore in the future such as performing propensity score matching and using its other arguments. 
+
+## Acknowledgements
+Noah Greifer, the authors of the `MatchIt` package, wrote a great [article](https://cran.r-project.org/web/packages/MatchIt/vignettes/matching-methods.html) on the `MatchIt` package that was invaluable in the development of this tutorial.
+
+## Work in progress
+This is a work in progress and may be updated in the future. This work is only for educational purposes. 
+
