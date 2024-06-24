@@ -1,0 +1,386 @@
+---
+title: "Mediation Analysis using R"
+author: "Mark Bounthavong"
+date: "23 June 2024"
+output:
+  rmdformats::downcute:
+    self_contained: true
+    default_style: "light"
+    downcute_theme: "default"
+---
+
+
+```{r setup, include=FALSE}
+## Global options
+knitr::opts_chunk$set(cache = TRUE)
+```
+
+## Introduction
+Determining the causal pathway between the “cause” and “effect” is an essential fundamental step to developing a testable study hypothesis. In biomedical sciences, the “cause” may be the exposure or the treatment group, and the “effect” may be the endpoint (e.g., biomarkers, readmission, survival). For example, we might be interested in the clinical efficacy of a new pharmaceutical product entering the market: “Does the new drug improve life expectancy?” 
+
+A simple way to illustrate this is with a directed acyclic graph (DAG) diagram. We can denote the new drug (exposure) as $X$ and life expectancy (outcome) as $Y$:
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, out.width = "50%", fig.cap = "DAG diagram."}
+knitr::include_graphics("Figures\\Figure1_dag1.png")
+```
+
+The structural form of $X \rightarrow Y$ is:
+
+$$Y_{i} = \beta_{0} + \beta_{1}(X_{i}) + \epsilon_{i},$$
+
+where
+
+#### Coefficients: 
+* $Y_{i}$ denotes the endpoint for the i-th subject 
+* $\beta_{0}$ denotes the intercept (or constant) 
+* $\beta_{1}$ denotes the change in Y per a 1-unit change in X_i 
+* $\epsilon_{i}$ denotes the error term for the i-th subject 
+
+#### Variables:
+* $X_{i}$ denotes the main predictor of interest which can be a continuous or a categorical data type for the i-th subject and 
+
+The DAG diagram provides us with an illustration of the causal pathway between X and Y barring any other factors that might modify or moderate this relationship. Using the regression model structural form (EQ1), we capture the intended causal relationship $X \rightarrow Y$. 
+
+However, if there are factors (“C”) that potentially moderate or confound this relationship ($X \leftarrow C \rightarrow Y$), we can address these by adding them as covariates into the regression model. We can illustrate the confounder (or moderator) using a DAG diagram:
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, out.width = "50%", fig.cap = "DAG diagram with confounder."}
+knitr::include_graphics("Figures\\Figure2_dag_confounder.png")
+```
+
+Regression models allow researchers to control (or adjust) for baseline confounders by including them as covariates, which we will denote as “C” (EQ2):
+
+$$Y_{i} = \beta_{0} + \beta_{1}(X_{i}) + \theta_{j}(\bf{C_{ji}}) + \epsilon_{i},$$
+
+where
+
+* $i$ denotes the unit of analysis (e.g., subject) 
+
+#### Coefficients: 
+* $Y_{i}$ denotes the endpoint for the i-th subject 
+* $\beta_{0}$ denotes the intercept (or constant) 
+* $\beta_{1}$ denotes the change in Y per a 1-unit change in X_i
+* $\theta_{j}$ denotes the change in Y per a 1-unit change in $C_{ji}$ for the j-th covariate, and 
+* $\epsilon_{i}$ denotes the error term for the i-th subject 
+
+#### Variables:
+* $X_{i}$ denotes the main predictor of interest which can be a continuous or a categorical data type for the i-th subject and 
+* $\bf{C_{ji}}$ denotes a matrix of j-th covariates (or confounders) for the i-th subject  
+
+In most cases, this would be considered enough to address the potential baseline confounders that could impact the causal relationship between the “cause” and “effect.” But in some cases, there are variables that are measured after the baseline index date or treatment assignment that could be related to the endpoint or outcome of interest. 
+
+For example, suppose patients were randomized into two groups (Group A and Group B), and the main outcome of interest is life expectancy. Let’s further suppose that these patients had their sense of well-being measured after their treatment assignment. We have a theory that this sense of well-being could be affected by the treatment assignment. But we also believe that this sense of well-being has an effect on life expectancy. We can’t include the patient’s sense of well-being as part of the baseline covariates because it was measured after the treatment assignment or index date. Instead, we would have to treat this “sense of well-being” as a mediator. 
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, out.width = "70%", fig.cap = "DAG diagram mediator example."}
+knitr::include_graphics("Figures\\Figure2_dag_mediator_example.png")
+```
+
+A mediator (M) is an intermediary between the “cause” (X) and “effect” (Y).[1] For instance, the new drug entering the market improves cholesterol which increases life expectancy. In this example, the new drug is the “cause” (X), improved cholesterol is the mediator (M), and life expectancy is the “effect” (Y). We can use a DAG diagram to illustrate this relationship:
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, out.width = "50%", fig.cap = "DAG diagram with mediator"}
+knitr::include_graphics("Figures\\Figure2_dag_mediator.png")
+```
+
+Unlike a confounder which we include into a regression model, a mediator would require separate regression models to determine its impact on the causal relationship between the “cause” and “effect” or between $X \leftarrow C \rightarrow Y$. 
+
+We consider two types of effects when a mediator is involved: direct and indirect. 
+
+The total effect is a combination of the direct and indirect effects. 
+
+A direct effect is the causal pathway between $X \rightarrow Y$.
+
+An indirect effect is the casual pathway between $X \rightarrow M$ and from $(X + M) \rightarrow Y$. 
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, out.width = "80%", fig.cap = "Total effect, direct effect, and indirect effect of a mediation analysis."}
+knitr::include_graphics("Figures\\Figure3_total_effect.png")
+```
+
+We would need separate regression models for each of these effects. 
+
+<br>
+
+#### **Total effect:**
+$$Y_{i} = \beta_{0} + \beta_{1}(X_{i}) + \epsilon_{i},$$
+
+where $\beta_{1}$ denotes the change in Y due to a change in X.
+
+<br>
+
+#### **First-part indirect effect:**
+$$M_{i} = \beta_{0} + \beta_{2}(X_{i}) + \epsilon_{i},$$
+
+where $\beta_{2}$ denotes the change in Y due to a change in X.
+
+<br>
+
+#### **Second-part direct + indirect effects:**
+$$Y_{i} = \beta_{0} + \beta_{3}(X_{i}) + \beta_{4}(M_{i}) + \epsilon_{i},$$
+
+where $\beta_{3}$ denotes the change in Y due to a change in X holding M constant and $\beta_{4}$ denotes the change in $Y$ due to a change in $M$ holding $X$ constant.
+
+If $\beta_{3}$ is less than $\beta_{1}$ then we have some suspicion that the $X \rightarrow Y$ total effect is mediated by another variable $M$. In other words, the direct effect between $X \rightarrow Y$ is weaker due to the mediator $M$. 
+
+We can assess this weakening effect using two types of tests: Sobel test and bootstrap method. 
+
+The Sobel test is a proportion test where we take the proportion of the total effect that is captured in the indirect effect from mediation model: $\frac{\text{Indirect effect}}{\text{Total effect}}$.[2]
+
+The bootstrap method is a resampling procedure that achieves parametric distributions of the sample in the data.[3] It is convenient because we don’t have to assume that the data is normally distributed. The Sobel test is based on a normally distributed assumption, which can limit its interpretation. 
+
+## Motivating Example
+We will use the Agency for Healthcare Research and Quality (AHRQ) Medical Expenditure Panel Survey (MEPS) data to illustrate mediation analysis.[4]
+
+We’ll perform a mediation analysis to test whether having diabetes is associated with number of times a person lost half a day of work and mediated by a person’s perceived health status. Here is the DAG diagram of this mediated pathway:
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, out.width = "70%", fig.cap = "Total effect, direct effect, and indirect effects of a mediation analysis."}
+knitr::include_graphics("Figures\\Figure4_example.png")
+```
+
+## Tutorial on Mediation Analysis using MEPS data
+We will first need to load the MEPS data into R. Then, we'll parse this to only several variables for the mediation analysis:
+
+* `dupersid` represents the unique identifier of the subject
+* `ddnwrk21` represents the number of work days lost due to illness (we'll rename this as `workdays`) 
+* `diabx_m18` represents the diabetes diagnosis (we'll rename this as `diabetes`) [1 = Yes, 2 = No]
+* `rthlth31` represents the health status of the subject (we'll rename this as `health_status`) [1 = Excellent, 2 = Very good, 3 = Good, 4 = Fair, 5 = Poor]
+* `sex` represents the sex of the subject
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+# To install MEPS package in R, you need to do a couple of things.
+### Step 1: Install the "devtools" package. 
+#install.packages("devtools")
+
+### Step 2: Install the "MEPS" package from the AHRQ MEPS GitHub site. 
+#devtools::install_github("e-mitchell/meps_r_pkg/MEPS")
+
+### step 3: Load the MEPS package
+library("MEPS") ## You need to load the library every time you restart R
+
+### Step 4: Load the other libraries
+library("dplyr")          # Data wrangling
+library("gtsummary")      # Create tables
+library("expss")          # Relabel variables
+library("bda")            # Perform Sobel text
+library("mediation")        # Perform the bootstrap approach
+
+# There are two ways to load data from AHRQ MEPS website:
+#### Method 1: Load data from AHRQ MEPS website
+hc2021 = read_MEPS(file = "h233")
+
+#### Method 2: Load data from AHRQ MEPS website
+hc2021 = read_MEPS(year = 2021, type = "FYC")
+
+### Step 5: Change column names to lowercase
+names(hc2021) <- tolower(names(hc2021))
+
+### Step 6: Select specific variables
+### 2021
+hc2021p = hc2021 %>%
+  rename(
+    workdays = ddnwrk21,
+    diabetes = diabdx_m18,
+    health_status = rthlth31) %>%
+  dplyr::select(                        ## NOTE: there is a weird issue when you don't involve dplyr::select bc MASS is preferred (URL: https://stackoverflow.com/questions/48161431/select-statement-error-unused-argument)
+    dupersid, 
+    workdays, 
+    diabetes, 
+    health_status,
+    sex)
+hc2021p$year <- 2021
+
+### Step 7: Clean data (We don't want to include any missing or NA responses)
+hc2021p = hc2021p %>%
+  filter(workdays >= 0,
+         diabetes >= 1,
+         health_status >= 1)
+
+# We want "No diabetes" to have a value of 0 because it will make interpreting the model easier
+hc2021p$diabetes[hc2021p$diabetes == 2] = 0
+
+### Step 8: Convert to factor and add labels
+hc2021p$sex <- factor(hc2021p$sex,
+                         levels = c(1, 2),
+                         labels = c("Male", "Female"))
+
+hc2021p$health_status <- factor(hc2021p$health_status, 
+                                   levels = c(1, 2, 3, 4, 5),
+                                   labels = c("Excellent", "Very good", "Good", "Fair", "Poor"))
+
+hc2021p$diabetes <- factor(hc2021p$diabetes,
+                              levels = c(0, 1),
+                              labels = c("No diabetes", "Diabetes"))
+
+### Step 9: Relabel the variables
+hc2021p <- apply_labels(hc2021p,
+                        diabetes = "Diabetes status", 
+                        workdays = "Days missed from work", 
+                        health_status = "Perceived health status", 
+                        sex = "Sex")
+```
+
+### Descriptive analysis
+We can compare the variables between subjects with and without diabetes. 
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+hc2021p %>%
+  tbl_summary(include = c(health_status, sex, workdays), 
+              by = diabetes, 
+              statistic = list(all_continuous() ~ "{mean} ({sd})")) %>%
+  modify_header(label = "**Variable***") %>%
+  bold_labels()
+```
+
+
+
+### Regression model - Total effect
+We will construct the direct effect regression model where $diabetes \rightarrow workdays$. We will use an ordinary least square model (OLS) for our analyses. 
+
+$$workdays_{i} = \beta_{0} + \beta_{1}(diabetes_{i}) + \epsilon_{i}$$
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+direct.model <- glm(workdays ~ diabetes, data = hc2021p, family = gaussian(link = "identity"))
+round(cbind(coef(direct.model), confint(direct.model)), 3)
+tbl_regression(direct.model, estimate_fun = ~ style_number(.x, digits = 3))
+```
+
+Based on the model, the diabetes group experienced an increase of 1.79 work days lost compared to the No diabetes group (95%: 1.12, 2.45), which was statistically significant (P < 0.001). In other words, diabetes patients had more work days lost compared to patients without diabetes. 
+
+However, this isn't the whole story. We did not take into consideration the mediator (perceived health status) into account. To do that, we will need to create additional indirect models. 
+
+### Regression model - First-part Indirect effect
+The first indirect effect model will have the diabetes variable regressed to the mediator variable (perceived health status). 
+
+$$health\_status_{i} = \beta_{0} + \beta_{2}(diabetes_{i}) + \epsilon_{i}$$
+
+Since `health_status` is a factor variable, we will use the `as.numeric` in our OLS model to make sense of the interpretation. 
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+indirect.model1 <- glm(as.numeric(health_status) ~ diabetes, data = hc2021p, family = gaussian(link = "identity")) ## We need to convert the `health_status` variable to numeric to make sense of the linear regression model.
+round(cbind(coef(indirect.model1), confint(indirect.model1)), 3)
+tbl_regression(indirect.model1, estimate_fun = ~ style_number(.x, digits = 3))
+```
+
+Based on the first indirect mode, diabetes patients had an increase 0.73 points on their perceive health status (higher score indicates poorer health) compared to the non-diabetes patients (95% CI: 0.67, 0.79), which was statistically significant (P <0.001). 
+
+Since the exposure of interest (`diabetes`) has a significant association with the mediator `health_status`, this lends support to the idea that perceived health status may be mediating the effect between having diabetes and number of lost work days. 
+
+
+### Regression model - Second-part Direct + Indirect effects
+Now, we construct a regression model where we include the direct and the first indirect effects. 
+
+$$workdays_{i} = \beta_{0} + \beta_{3}(diabetes_{i}) + \beta_{4}(health\_status_{i}) + \epsilon_{i}$$
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+indirect.model2 <- glm(workdays ~ diabetes + as.numeric(health_status), data = hc2021p, family = gaussian(link = "identity"))
+round(cbind(coef(indirect.model2), confint(indirect.model2)), 3)
+tbl_regression(indirect.model2, estimate_fun = ~ style_number(.x, digits = 3))
+```
+
+The coefficient ($\beta_{3}$) in the first indirect model is less than the coefficient ($\beta_{1}$) in the direct model (0.42 < 1.79), which indicates that there is some of the effect is captured with the mediator variable (`health_status`).
+
+I learn an interesting relationship between these effect from [Tilburb Science Hub's website](https://tilburgsciencehub.com/topics/analyze/regression/linear-regression/mediation-analysis/). You can check the mediator effect by looking at the $\beta$ coefficients. 
+
+The total effect is equal to the direct and indirect effects, which is $(\beta_{2} * \beta_{4}) + \beta_{3}$, which is $0.733 * 1.725) * 0.522 = 1.786$. We can look at the total effect model and compare these results. 
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+t1 <- tbl_regression(direct.model, estimate_fun = ~ style_number(.x, digits = 3)) %>% modify_column_hide(columns = p.value) %>% modify_column_hide(ci)
+t2 <- tbl_regression(indirect.model1, estimate_fun = ~ style_number(.x, digits = 3)) %>% modify_column_hide(columns = p.value) %>% modify_column_hide(ci)
+t3 <- tbl_regression(indirect.model2, estimate_fun = ~ style_number(.x, digits = 3)) %>% modify_column_hide(columns = p.value) %>% modify_column_hide(ci)
+
+tbl_merge(
+  tbls = list(t1, t2, t3),
+  tab_spanner = c("**Total effect**", "**First-part indirect effect**", "**Second-part direct + indirect effects**")
+)
+```
+
+Now that we have established that perceived health status is explaining some of the effect between the `diabetes` and `workdays` causal relationship, it's time to perform the inferential test to determine if this phenomenon is statistically significant. We will do this using the Sobel test and bootstrapping method. 
+
+
+### Sobel test (Proportion test)
+We can evaluate the proportion of the total effect mediated by the mediator variable (`health_status`) using the following equation:
+
+$$\frac{\text{Indirect effect}}{\text{Total effect}} = \frac{\beta_{2}*\beta_{4}}{\beta_{3}}$$
+
+which translates to = $\frac{0.733 * 1.725}{1.786} = 0.708$ or approximately 71%.
+
+To test whether this is significant, we can perform the Sobel text. We will need to install the `bda` package. Once you've done this and loaded the `bda` library, we will use the `mediation.test()` function to perform the Sobel test. 
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+## mediation.test(mv,iv,dv), where mv is the mediator variable, iv is the independent varible, and dv is the dependent variable)
+mediation <- mediation.test(as.numeric(hc2021p$health_status), hc2021p$diabetes, hc2021p$workdays)
+round(mediation, 3)
+## Note: We had to convert health_status to numeric
+```
+
+We are only interested in the results of the "Sobel" column. According to the Sobel test, the z-value is 13.84, and the p-value is < 0.001. Hence, we can concluded that the mediator effect is statistically signficant. 
+
+### Bootstrap approach
+The bootstrap approach has been preferred over the Sobel test due to its convenience in not assuming that the data is normally distributed and usefulness with small samples. 
+
+To perform the bootstrap approach, we will need to install the `meditation` package. 
+
+Once installed, we can perform the bootstrap approach. We will use the `mediate` function to perform this analysis. 
+
+We will need to use the first-part indirect effect model and the second-part direct + indirect effects model
+
+First-part indirect effect model: 
+
+$$health\_status_{i} = \beta_{0} + \beta_{2}(diabetes_{i}) + \epsilon_{i}$$
+
+Second-part direct + indirect effects model: 
+
+$$workdays_{i} = \beta_{0} + \beta_{3}(diabetes_{i}) + \beta_{4}(health\_status_{i}) + \epsilon_{i}$$
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+## Note: We have to convert health_status to a numeric since errors will occur when using it as a factor.
+hc2021p$health_status <- as.numeric(hc2021p$health_status)
+
+## First-part indirect effect model:
+indirect.model1 <- glm(health_status ~ diabetes, data = hc2021p, family = gaussian(link = "identity"))
+
+## Second-part direct + indirect effect model:
+indirect.model2 <- glm(workdays ~ diabetes + health_status, data = hc2021p, family = gaussian(link = "identity"))
+
+## Mediation analysis with 1000 simulations
+mediation.results <- mediate(indirect.model1, indirect.model2, treat = 'diabetes', mediator = 'health_status', boot = TRUE, sims = 1000)
+summary(mediation.results)
+```
+
+We are interested in the `ACME` row, which tells us the "average causal mediation effect." In other other words, this tells us how much of the total effect is explained by the mediator. The estimated ACME was 1.26 (95% CI: 1.06, 1.47) with p-value of <0.001, which is statistically significant. We estimated this earlier where we multiplied $\beta_{2}$ and $\beta_{3}$ from the second-part direct + indirect effects model: $0.733 * 1.725 = 1.264$
+
+The `ADE` row provides the "average direct effect," which corresponds to $\beta_{3}$ from our second-part direct + indirect effect model.
+
+The `Total effect` comes from our total effect model, and the `Prop. Mediated` was estimated using the $\frac{\text{Indirect effect}}{\text{Total effect}} = \frac{\beta_{2}*\beta_{4}}{\beta_{3}}$ formula.
+
+
+## Conclusions
+Mediation analysis is important when we have variables that are measured after the treatment assignment or index period and are associated with the endpoint or outcome of interest. Mediator variable can be mistaken as baseline covariates; one should not carelessly include mediator variables as baseline covariates. Instead, we should carefully think about the relationships of all variables using the DAG diagram to assist us with constructing our regression model. 
+
+Confounders can be included in mediation analysis, but we need to think about where to include the confounders. If there are baseline confounders that theoretically impact the $X \rightarrow Y$ causal pathway, then we need to include these confounders in the total effect model. But if there are confounders that impact the mediator to outcome pathway $M \rightarrow Y$ then we need to include these confounders in the second-part direct + indirect effects model. (Note: I may expand this tutorial with the addition of confounders in mediation analysis in the future.)
+
+Ultimately, it is important to sketch out a DAG diagram and support this with a framework. Having this fundamental part of your narrative will strengthen your argument but also justify the modeling approach. 
+
+
+## References
+1. MacKinnon DP, Fairchild AJ, Fritz MS. Mediation Analysis. Annu Rev Psychol. 2007;58:593. doi:10.1146/annurev.psych.58.110405.085542
+
+2. Sobel ME. Asymptotic Confidence Intervals for Indirect Effects in Structural Equation Models. Sociol Methodol. 1982;13:290. doi:10.2307/270723
+
+3. Preacher KJ, Hayes AF. Asymptotic and resampling strategies for assessing and comparing indirect effects in multiple mediator models. Behav Res Methods. 2008;40(3):879-891. doi:10.3758/BRM.40.3.879
+
+4. Agency for Healthcare Research and Quality. Medical Expenditure Panel Survey (MEPS). Published August 2018. Accessed March 2, 2021. https://www.ahrq.gov/data/meps.html
+
+
+## Acknowledgements
+I took inspiration from Bommae Kim’s blog on Mediation Analysis from the StatLag at the University of Virginia. The link is here: https://library.virginia.edu/data/articles/introduction-to-mediation-analysis
+
+Another great blog on mediation analysis was written by Matthijs ten Tije from the Tilburg Science Hub. The link is here: https://tilburgsciencehub.com/topics/analyze/regression/linear-regression/mediation-analysis/
+
+The Sobel test was conducted using the `bda` package, which you can learn more about [here](https://cran.r-project.org/web/packages/bda/index.html). You can install this using the `install.pckages("bda")` command. 
+
+The `mediation` package for R is a great tool to perform the bootstrap approach for mediation analysis )[link](https://www.rdocumentation.org/packages/psych/versions/2.4.3/topics/mediate)). The authors wrote a paper on this package, which is located [here](https://cran.r-project.org/web/packages/mediation/vignettes/mediation.pdf). You can install this using the `install.packages("mediation")` command. 
+
+
+## Disclaimers
+I may update this article as I learn more about mediation analysis, so stay tuned. 
+
+This is for educational purposes only. 
+
